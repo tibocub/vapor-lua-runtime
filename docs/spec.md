@@ -203,3 +203,31 @@ RP2040 heap: `free` after 20 runs of `events.lua` grew by 200 bytes (no leak); p
 
 NuttX quirks found: no `system()` here (hence `vlr_exec`), `environ` is a macro from `<stdlib.h>` (not linkable), and `stat(".")` fails
 (a relative "." is not resolved), so tests and modules must use real paths.
+
+## RP2040 measurements (2026-11-20, `rp2040-vlr` image, GC 100/400, `tools/measure.lua`)
+
+Board: 243,896 B heap total; `free` at the prompt (vaporshell running): 66 KB used, 177 KB free, **largest free block 129 KB**.
+
+| what | result |
+|---|---|
+| flash cost of vlr (object sizes, before link GC) | 140.8 KB text: Lua 104.6, lpeg 15.2, cjson 8.1, embedded scheduler+compat sources 6.4, lfs 3.5, core+platform 3.0 (22% of the 645 KB image) |
+| Lua heap of a one-line script | 30.9 KB (vlua's empty state: 16.7 KB; the extra is the scheduler and compat code kept as Lua functions) |
+| per module after `require` | lfs 1.4 KB, lpeg 1.9 KB, cjson 1.8 KB |
+| coroutine / parked vlr task | 0.88 KB / 1.23 KB each |
+| 1000 integers in a table | 16.4 KB |
+| `fib(23)` | 0.4 s (vlua 0.36 s) |
+| 300k integer-loop steps | 2.1 s (vlua 2.43 s) |
+| 20k `math.sin` | 2.2 s (vlua: 7.4 s for 60k) |
+| 1000 `string.format` + concat | 1.7 s |
+| sort 1000 numbers | 0.1 s |
+| 500 small tables | 0.9 s (GC 100/400 cost) |
+| `pcall` nesting | 37 levels reached (limit 40) |
+| Lua recursion depth before "not enough memory" | about 1400 frames (desktop: 200000) |
+| largest script that compiles | 20 KB of dense source fits, 40 KB does not (a real file with longer lines uses less memory per byte) |
+| timer granularity | `sleep(0.01)` takes ~20 ms, `sleep(0.1)` takes ~110 ms: NuttX 10 ms tick |
+| leak check | 20 runs of `events.lua`: +200 bytes of heap |
+
+Reading: the interpreter speed equals vlua's (same VM). The limits that bite are heap (about 130 KB contiguous for
+a script's data, and about 1400 Lua frames), compile memory (about 20-30 KB of source per file) and timer resolution.
+Not measured: stack high-water mark (`ps` STACK/USED), the 6x string-benchmark slowdown from GC 100/400 on this exact
+image, and a larger-script comparison between source and bytecode.
