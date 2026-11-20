@@ -11,7 +11,7 @@
   main { max-width:900px; margin:0 auto; display:grid; gap:12px; }
   h1 { font-size:16px; margin:0; } h1 small { color:var(--muted); font-weight:normal; }
   textarea, pre, input { width:100%; box-sizing:border-box; background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:10px; font:inherit; }
-  textarea { min-height:200px; resize:vertical; } pre { min-height:140px; margin:0; overflow:auto; white-space:pre-wrap; }
+  textarea { min-height:200px; resize:vertical; } pre { height:300px; margin:0; overflow:auto; white-space:pre-wrap; }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; } .row input { flex:1; min-width:180px; width:auto; }
   button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; font:inherit; cursor:pointer; }
   select { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px; font:inherit; }
@@ -29,17 +29,30 @@ print("hi " .. tostring(io.read("l")))</textarea>
   <div class="row">
     <button id="run">Run</button>
     <select id="dialect" aria-label="Dialect"><option value="">5.1 dialect (default)</option><option value="--dialect=5.4">plain 5.4</option></select>
+    <button id="demo" type="button" title="Fills the editor with a script that prints every key, mouse and resize event">Events demo</button>
     <span class="status" id="status">loading…</span>
   </div>
-  <pre id="out" aria-live="polite"></pre>
+  <pre id="out" tabindex="0" aria-label="Output; click it to send keys and mouse to the script"></pre>
   <form class="row" id="form"><input id="stdin" placeholder="type here to answer, Enter to send" aria-label="Input to the script" autocomplete="off"><button>Send</button></form>
 </main>
 <script type="module">
   import createVlr from "./vlr.js";
-  import { startVlr } from "./vlr-glue.js";
+  import { startVlr, attachEvents } from "./vlr-glue.js";
   const $ = (id) => document.getElementById(id);
   let current = null;
-  const add = (s, cls) => { const e = document.createElement("span"); if (cls) e.className = cls; e.textContent = s + "\n"; $("out").append(e); };
+  const add = (s, cls) => { const e = document.createElement("span"); if (cls) e.className = cls; e.textContent = s.replace(/\x1b\[[?0-9;]*[hl]/g, "") + "\n"; // mode switches (mouse on/off) are for terminals $("out").append(e); };
+  // one character cell of the output pane, measured from a probe span; the size in cells feeds vapor.size
+  function cell() { const p = document.createElement("span"); p.textContent = "0000000000"; p.style.visibility = "hidden"; $("out").append(p);
+    const r = p.getBoundingClientRect(); p.remove(); return { w: r.width / 10 || 8, h: r.height || 18 }; }
+  function termSize() { const c = cell(), r = $("out").getBoundingClientRect(); return { cols: Math.max(1, Math.floor(r.width / c.w)), rows: Math.max(1, Math.floor(r.height / c.h)) }; }
+  const DEMO = `vapor.input({mouse = 2})      -- keys, chars, mouse (with motion), resize
+print("click here, type, scroll, resize the window; q quits")
+while true do
+  local ev = {vapor.pull()}
+  print(table.concat(ev, " "))
+  if ev[1] == "char" and ev[2] == "q" then break end
+end
+vapor.input(false)`;
   async function run() {
     $("out").textContent = ""; current = null; $("status").textContent = "running…";
     const args = [$("dialect").value, "/main.lua"].filter(Boolean);
@@ -47,11 +60,16 @@ print("hi " .. tostring(io.read("l")))</textarea>
       current = await startVlr(createVlr, {
         files: { "/main.lua": $("code").value }, args,
         print: (s) => add(s), printErr: (s) => add(s, "err"),
+        cols: termSize().cols, rows: termSize().rows,
         onExit: (c) => { $("status").textContent = c === 0 ? "finished" : "failed (exit " + c + ")"; current = null; },
       });
     } catch (e) { add(String(e), "err"); $("status").textContent = "error"; }
   }
   $("run").onclick = run;
+  $("demo").onclick = () => { $("code").value = DEMO; run(); $("out").focus(); };
+  // events go to the running script only; the proxy forwards to whichever run is current
+  attachEvents($("out"), { event: (...a) => current?.event(...a) }, cell);
+  new ResizeObserver(() => { const t = termSize(); current?.resize(t.cols, t.rows); }).observe($("out"));
   $("form").onsubmit = (ev) => { ev.preventDefault(); if (current) current.sendInput($("stdin").value + "\n"); $("stdin").value = ""; };
   $("status").textContent = "ready";
   // lets a headless browser capture a run: top-level await holds the load event while the script runs
