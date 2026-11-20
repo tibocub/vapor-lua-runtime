@@ -1,0 +1,25 @@
+Problem: Lua 5.4 prints 5.0 where 5.1 printed 5 (tostring, print, .., %s), which breaks 5.1-dialect programs.
+Evidence: lobject.c tostringbuff adds ".0" to float results that look like integers.
+Fix: skip that when vlr_dotzero is 0 (set by vlr_newstate for the 5.1 dialect). Applied in place in third_party/lua.
+Upstream: not applicable (vlr-specific behaviour switch).
+
+--- a/third_party/lua/lobject.c	2026-11-20 03:45:20.840447586 +0100
++++ b/third_party/lua/lobject.c	2026-11-20 03:45:02.436304219 +0100
+@@ -352,6 +352,8 @@
+ /*
+ ** Convert a number object to a string, adding it to a buffer
+ */
++int vlr_dotzero = 1;  /* vlr: 0 = print 5.0 as 5, like Lua 5.1 (patches/lua-dotzero.patch) */
++
+ static int tostringbuff (TValue *obj, char *buff) {
+   int len;
+   lua_assert(ttisnumber(obj));
+@@ -359,7 +361,7 @@
+     len = lua_integer2str(buff, MAXNUMBER2STR, ivalue(obj));
+   else {
+     len = lua_number2str(buff, MAXNUMBER2STR, fltvalue(obj));
+-    if (buff[strspn(buff, "-0123456789")] == '\0') {  /* looks like an int? */
++    if (vlr_dotzero && buff[strspn(buff, "-0123456789")] == '\0') {  /* looks like an int? */
+       buff[len++] = lua_getlocaledecpoint();
+       buff[len++] = '0';  /* adds '.0' to result */
+     }
