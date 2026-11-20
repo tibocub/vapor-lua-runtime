@@ -254,3 +254,11 @@ The playground (`web/index.html`) makes the output pane the console: click it to
 Tests: `tests/decode.lua` (decoder), `tests/pty/run.py` (real pty: keys, mouse, ESC, resize), `web/ev-test.mjs` (page path).
 Shortcuts: resize is polled every 250 ms on native targets; Windows console path is untested under wine (no real console).
 Also: `VLR_STRIP_INTERNAL` strips debug info from our own Lua (heap -3.4 KB on host); Kconfig `VAPOROS_VLR_STRIP_INTERNAL` (default y).
+
+### RP2040 re-check with input events (2026-11-21)
+
+Image rebuilt with vtinput, `vapor.input` and `VLR_STRIP_INTERNAL=1`; flashed. `decode`, `sched`, `events`, `compat51`, `dialect54`
+(with `--dialect=5.4`) pass on the board. Strip confirmed active (`debug.getinfo(vapor.sleep, "L")` has 0 active lines vs 5 unstripped).
+Real console path over USB CDC: `vapor.input(true)` received a char, an Up arrow and an SGR mouse press typed from the host
+(`EV char,a / key,up,0 / mouse,press,1,5,6,0`). Lua heap at start of a script: 31.8 KB (before/after the strip not measured on the board;
+host: 40.5 -> 37.0 KB). Not run on the board: `fs`, `fd`, `exec`, `exec54`, lfs suite after this change.
