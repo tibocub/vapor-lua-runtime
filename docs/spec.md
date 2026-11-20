@@ -180,3 +180,22 @@ not only Lua. A target is "supported" when it passes. Known per-target skips are
 - `vapor.pull` event names for gamepad/touch/IME.
 - Is `vlr_wait` plus `vlr_poll_event` one call? (decide while writing the posix backend)
 - Does `io.read` on stdin get coroutine-wrapped, or only `vapor.read`?
+
+## Status (2026-11-20)
+
+Backends passing the same suite (`tests/*.lua`, each in normal and `--step` mode): Linux (posix), Windows (mingw
+under wine), WASM (emscripten under Node, no Asyncify), NuttX simulator (vaporOS `sim-vlr`, via the posix backend
+unchanged). Not yet run: real Windows, a browser, the RP2040 (build only).
+
+Measured (build only, no board connected): RP2040 image text size, `arm-none-eabi-size`:
+
+| image | text | bss |
+|---|---|---|
+| vaporOS `rp2040-vlr` (vlr, lfs+lpeg+cjson) | 645196 | 15064 |
+| vaporOS `rp2040-zero` (vlua, lfs+lpeg+cjson+vsign) | 686172 | 18016 |
+
+Not a fair comparison yet: vlua's image also has vsign (ed25519); vlr has the scheduler and fs API instead. Heap
+and stack on the board are unmeasured.
+
+NuttX quirks found: no `system()` here (`os.execute` is stubbed through Lua's `l_system` hook), and `stat(".")` fails
+(a relative "." is not resolved), so tests and modules must use real paths.
