@@ -37,6 +37,17 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
     return count;
 }
 
+/* the page owns the console: its size is Module.vlrCols/vlrRows (set by web/vlr-glue.js, default 80x24) */
+EM_JS(int, js_cols, (void), { return Module.vlrCols || 80; });
+EM_JS(int, js_rows, (void), { return Module.vlrRows || 24; });
+
+int vlr_console_size(int *cols, int *rows)
+{
+    *cols = js_cols();
+    *rows = js_rows();
+    return 0;
+}
+
 static lua_State *g_L;
 
 static void tick(void *unused)
@@ -67,4 +78,25 @@ void vlr_wasm_run(lua_State *L)
 {
     g_L = L;
     emscripten_async_call(tick, NULL, 0);
+}
+
+/*
+ * The page pushes input events itself (no terminal to decode): vapor.push(name, s, ints...) with nint integers.
+ * char: ("char", text)   key: ("key", name, mods)   mouse: ("mouse", action, button, x, y, mods)   resize: ("resize", cols, rows)
+ * (s may be NULL for resize).
+ */
+EMSCRIPTEN_KEEPALIVE void vlr_wasm_push(const char *name, const char *s, int nint, int a, int b, int c, int d)
+{
+    int ints[4], i;
+
+    if (g_L == NULL) return;
+    ints[0] = a; ints[1] = b; ints[2] = c; ints[3] = d;
+    lua_getglobal(g_L, "vapor");
+    lua_getfield(g_L, -1, "push");
+    lua_remove(g_L, -2);
+    lua_pushstring(g_L, name);
+    if (s != NULL) lua_pushstring(g_L, s);
+    for (i = 0; i < nint && i < 4; i++) lua_pushinteger(g_L, ints[i]);
+    if (lua_pcall(g_L, 1 + (s != NULL) + (nint < 4 ? nint : 4), 0, 0) != LUA_OK) lua_pop(g_L, 1);
+    vlr_wasm_wake();
 }

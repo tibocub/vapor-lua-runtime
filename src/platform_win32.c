@@ -103,6 +103,50 @@ int vlr_fs_mkdir(const char *path)
     return 0;
 }
 
+static DWORD g_inmode, g_outmode;
+static int g_raw;
+
+int vlr_console_raw(int enable)
+{
+    HANDLE in = GetStdHandle(STD_INPUT_HANDLE), out = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    if (enable && !g_raw) {
+        if (!GetConsoleMode(in, &g_inmode)) return -1;
+        GetConsoleMode(out, &g_outmode);
+        /* VT input: keys arrive as the same escape sequences as on a terminal, decoded by vtinput */
+        SetConsoleMode(in, ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT);
+        SetConsoleMode(out, g_outmode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        SetConsoleCP(CP_UTF8);
+        SetConsoleOutputCP(CP_UTF8);
+        g_raw = 1;
+    } else if (!enable && g_raw) {
+        SetConsoleMode(in, g_inmode);
+        SetConsoleMode(out, g_outmode);
+        g_raw = 0;
+    }
+    return 0;
+}
+
+int vlr_console_read(char *buf, int n)
+{
+    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD got = 0;
+
+    if (!stdin_ready()) return 0;
+    if (!ReadFile(in, buf, (DWORD)n, &got, NULL)) return -1;
+    return got == 0 ? -1 : (int)got;
+}
+
+int vlr_console_size(int *cols, int *rows)
+{
+    CONSOLE_SCREEN_BUFFER_INFO i;
+
+    if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &i)) return -1;
+    *cols = i.srWindow.Right - i.srWindow.Left + 1;
+    *rows = i.srWindow.Bottom - i.srWindow.Top + 1;
+    return 0;
+}
+
 int vlr_exec(const char *cmd)
 {
     int r;

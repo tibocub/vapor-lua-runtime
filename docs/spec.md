@@ -241,3 +241,15 @@ Stdin rule: scripts wait with `vapor.wait_fd(0)` and then read; a read on an emp
 `os.execute` is unavailable there (`vapor.caps.exec == false`). Each Run creates a fresh instance (one Lua state per run).
 Limits: output is line-buffered by emscripten (`vlr_flush` pushes a partial last line at exit); no keyboard/mouse/resize
 events yet (that is the next milestone), no wterm yet (plain `<pre>`).
+
+## Input events (`vapor.input`)
+
+`vapor.input(true | {mouse = 0|1|2})` puts the console in raw mode and delivers `vapor.pull` events: `char, text`;
+`key, name, mods` (1 shift, 2 alt, 4 ctrl); `mouse, action, button, x, y, mods` (press, release, drag, move, scroll_up/down; 1-based);
+`resize, cols, rows`; `quit` at end of input. `vapor.input(false)` (or exit, via a gc guard) restores the terminal.
+Bytes are decoded by `src/vtinput.c` (pure C: UTF-8, CSI/SS3 keys with modifiers, Shift+Tab, Alt+key, SGR mouse, split sequences,
+lone-ESC after 25 ms). The platform adds `vlr_console_read/raw/size`. Windows uses VT input mode (same decoder).
+Web: the page pushes the same events via `vlr.event(...)` / `attachEvents(el, vlr, cell)` in `web/vlr-glue.js`.
+Tests: `tests/decode.lua` (decoder), `tests/pty/run.py` (real pty: keys, mouse, ESC, resize), `web/ev-test.mjs` (page path).
+Shortcuts: resize is polled every 250 ms on native targets; Windows console path is untested under wine (no real console).
+Also: `VLR_STRIP_INTERNAL` strips debug info from our own Lua (heap -3.4 KB on host); Kconfig `VAPOROS_VLR_STRIP_INTERNAL` (default y).

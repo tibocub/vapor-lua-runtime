@@ -33,7 +33,7 @@ ifeq ($(TARGET),web)
 # browser (and Node, for the test harness): an ES module factory createVlr(); files live in MEMFS (web/vlr-glue.js)
 OUT      = web/vlr.js
 LIBS     = -sENVIRONMENT=web,node -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createVlr -sINVOKE_RUN=0 \
-           -sEXPORTED_RUNTIME_METHODS=FS,callMain -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sFORCE_FILESYSTEM=1
+           -sEXPORTED_RUNTIME_METHODS=FS,callMain,ccall -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sFORCE_FILESYSTEM=1
 else
 LIBS     = -sNODERAWFS=1 -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=1
 endif

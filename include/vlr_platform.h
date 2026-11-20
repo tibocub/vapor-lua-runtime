@@ -45,6 +45,16 @@ int vlr_fs_rmdir(const char *path); /* empty directories only; os.remove cannot 
 int vlr_fs_stat(const char *path, vlr_stat *st);
 
 /*
+ * Console (terminal) access for input events. Non-blocking: vlr_console_read returns the bytes available now
+ * (0 if none, -1 at end of input); wait for readiness with vlr_wait on handle 0 first. vlr_console_raw switches the
+ * console between line mode (0) and raw, unechoed input (1; the previous mode is restored by raw(0)). Backends without
+ * a terminal (wasm) have no console bytes: the page pushes events directly. vlr_console_size gives columns and rows.
+ */
+int vlr_console_read(char *buf, int n);
+int vlr_console_raw(int enable);
+int vlr_console_size(int *cols, int *rows);
+
+/*
  * Runs a shell command line (os.execute). Returns the exit code 0..255, or -1 with vlr_last_error set.
  * cmd == NULL asks whether a shell exists: returns 1 or 0. Backends without one return -1/0 and omit VLR_CAP_EXEC.
  */

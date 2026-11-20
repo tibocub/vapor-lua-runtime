@@ -12,6 +12,11 @@ for t in tests/*.lua; do
     else echo "FAIL $t $mode"; cat "${TMPDIR:-/tmp}/vlr-test.err"; fail=1; fi
   done
 done
+# the real terminal path through a pty (posix hosts only)
+if [ "$VLR" = ./vlr ] && command -v python3 >/dev/null 2>&1; then
+  python3 -I tests/pty/run.py || fail=1
+fi
+
 # os.exit closes the state (finalizers run) and keeps the status
 f="${TMPDIR:-/tmp}/vlr-exit.lua"
 printf 'setmetatable({}, {__gc = function() io.write("closed") end})\nos.exit(7)\n' > "$f"
