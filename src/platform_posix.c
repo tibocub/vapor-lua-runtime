@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <poll.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -118,6 +119,13 @@ int vlr_exec(const char *cmd)
     r = system(cmd);
     if (r == -1) return -1;
     return WIFEXITED(r) ? WEXITSTATUS(r) : 128 + (WIFSIGNALED(r) ? WTERMSIG(r) : 0);
+}
+#endif
+
+#ifndef VLR_POSIX_NO_WAIT
+void vlr_flush(void)
+{
+    fflush(NULL);
 }
 #endif
 

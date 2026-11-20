@@ -22,14 +22,21 @@ EXE      = .exe
 PLATSRC  = src/platform_win32.c
 LUADEF   =
 LIBS     = -static
-else ifeq ($(TARGET),wasm)
+else ifneq ($(filter wasm web,$(TARGET)),)
 # needs `source ~/Code/emsdk/emsdk_env.sh`; this build is for Node (NODERAWFS), the browser build is later
 CC       = emcc
 EXE      = .js
 RUN      = node
 PLATSRC  = src/platform_wasm.c src/platform_posix.c
 LUADEF   = -DLUA_USE_POSIX
+ifeq ($(TARGET),web)
+# browser (and Node, for the test harness): an ES module factory createVlr(); files live in MEMFS (web/vlr-glue.js)
+OUT      = web/vlr.js
+LIBS     = -sENVIRONMENT=web,node -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createVlr -sINVOKE_RUN=0 \
+           -sEXPORTED_RUNTIME_METHODS=FS,callMain -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sFORCE_FILESYSTEM=1
+else
 LIBS     = -sNODERAWFS=1 -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=1
+endif
 else
 EXE      =
 PLATSRC  = src/platform_posix.c
@@ -42,7 +49,10 @@ SRCS     = $(LUASRC) $(VLR_CORE_SRC) $(VLR_MAIN_SRC) $(PLATSRC) $(MODSRC) \
 OBJ      = $(addprefix $(OBJDIR)/,$(notdir $(SRCS:.c=.o)))
 VPATH    = src third_party/lua $(sort $(dir $(MODSRC)))
 
-vlr$(EXE): $(OBJ)
+OUT     ?= vlr$(EXE)
+
+$(OUT): $(OBJ)
+	@mkdir -p $(dir $(OUT))
 	$(CC) $(LDFLAGS) -o $@ $(OBJ) $(LIBS)
 
 $(OBJDIR)/%.o: %.c
@@ -58,7 +68,7 @@ $(OBJDIR)/%.o: $(GEN)/%.c
 $(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF) -include vlr_lua.h
 $(addprefix $(OBJDIR)/,$(notdir $(MODSRC:.c=.o))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
 $(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
-ifeq ($(TARGET),wasm)
+ifneq ($(filter wasm web,$(TARGET)),)
 $(OBJDIR)/platform_posix.o: CFLAGS += -DVLR_POSIX_NO_WAIT
 endif
 
@@ -78,7 +88,7 @@ $(GEN)/%.c: lua/%.lua build/embed
 # generated C (embedded Lua, module registry) only; for builds driven by another build system
 gen: $(addprefix $(GEN)/,$(addsuffix .c,$(VLR_LUA_EMBED))) $(GEN)/vlr_modules.c
 
-test: vlr$(EXE)
+test: $(OUT)
 	VLR="$(RUN) ./vlr$(EXE)" sh tests/run.sh
 
 check: vlr

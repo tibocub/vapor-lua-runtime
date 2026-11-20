@@ -12,6 +12,20 @@
 /* the page decides when console input is readable: Module.vlrStdinReady() (default: always, like /dev/null) */
 EM_JS(int, js_stdin_ready, (void), { return Module.vlrStdinReady ? (Module.vlrStdinReady() ? 1 : 0) : 1; });
 
+/* browsers: tell the page the script ended (Module.onVlrExit(code)); returns 0 when nobody listens (Node: exit) */
+EM_JS(int, js_exit, (int code), { if (Module.onVlrExit) { Module.onVlrExit(code); return 1; } return 0; });
+
+/* emscripten keeps a partial last line of stdout/stderr in JS until a newline: push it out */
+EM_JS(void, js_flush_tty, (void), {
+  for (const fd of [1, 2]) { const s = FS.streams[fd]; if (s && s.tty && s.tty.ops.fsync) s.tty.ops.fsync(s.tty); }
+});
+
+void vlr_flush(void)
+{
+    fflush(NULL);
+    js_flush_tty();
+}
+
 uint32_t vlr_caps(void) { return VLR_CAP_FS; }
 
 int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
@@ -38,7 +52,9 @@ static void tick(void *unused)
     }
     r = r < 0 || vlr_failed(g_L);
     lua_close(g_L);
-    emscripten_force_exit(r);
+    vlr_flush();
+    g_L = NULL;
+    if (!js_exit(r)) emscripten_force_exit(r);
 }
 
 /* page calls this when input arrives, to run the loop now */

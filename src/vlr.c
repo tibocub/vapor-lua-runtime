@@ -38,6 +38,7 @@ static int l_exit(lua_State *L)
     if (lua_isboolean(L, 1)) status = lua_toboolean(L, 1) ? EXIT_SUCCESS : EXIT_FAILURE;
     else status = (int)luaL_optinteger(L, 1, EXIT_SUCCESS);
     lua_close(L);
+    vlr_flush(); /* the wasm build does not run exit()'s stdio flush: a partial last line would be lost */
     exit(status);
 }
 

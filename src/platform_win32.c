@@ -18,6 +18,8 @@ static void seterr(void)
 
 const char *vlr_last_error(void) { return g_err; }
 
+void vlr_flush(void) { fflush(NULL); }
+
 uint32_t vlr_caps(void) { return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC; }
 
 int64_t vlr_now_ms(void)

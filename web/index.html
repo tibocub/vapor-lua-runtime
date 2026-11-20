@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vlr playground</title>
+<style>
+  :root { --bg:#14161a; --fg:#d7dae0; --muted:#8b91a0; --panel:#1d2026; --line:#2c313a; --accent:#7aa2f7; --err:#f7768e; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --fg:#1c1f24; --muted:#5b6270; --panel:#fff; --line:#d5d9e0; --accent:#2a5bd7; --err:#c4314b; } }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font:14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  main { max-width:900px; margin:0 auto; display:grid; gap:12px; }
+  h1 { font-size:16px; margin:0; } h1 small { color:var(--muted); font-weight:normal; }
+  textarea, pre, input { width:100%; box-sizing:border-box; background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:10px; font:inherit; }
+  textarea { min-height:200px; resize:vertical; } pre { min-height:140px; margin:0; overflow:auto; white-space:pre-wrap; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; } .row input { flex:1; min-width:180px; width:auto; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; font:inherit; cursor:pointer; }
+  select { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px; font:inherit; }
+  .err { color:var(--err); } .status { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>vlr playground <small>Lua 5.4.8 on WebAssembly, the same runtime as on the RP2040</small></h1>
+  <textarea id="code" spellcheck="false" aria-label="Lua code">print("hello from vlr", vapor.dialect)
+for i = 1, 3 do vapor.sleep(0.3); print("tick", i) end
+io.write("your name? "); io.flush()
+vapor.wait_fd(0)              -- wait for input without blocking the page
+print("hi " .. tostring(io.read("l")))</textarea>
+  <div class="row">
+    <button id="run">Run</button>
+    <select id="dialect" aria-label="Dialect"><option value="">5.1 dialect (default)</option><option value="--dialect=5.4">plain 5.4</option></select>
+    <span class="status" id="status">loading…</span>
+  </div>
+  <pre id="out" aria-live="polite"></pre>
+  <form class="row" id="form"><input id="stdin" placeholder="type here to answer, Enter to send" aria-label="Input to the script" autocomplete="off"><button>Send</button></form>
+</main>
+<script type="module">
+  import createVlr from "./vlr.js";
+  import { startVlr } from "./vlr-glue.js";
+  const $ = (id) => document.getElementById(id);
+  let current = null;
+  const add = (s, cls) => { const e = document.createElement("span"); if (cls) e.className = cls; e.textContent = s + "\n"; $("out").append(e); };
+  async function run() {
+    $("out").textContent = ""; current = null; $("status").textContent = "running…";
+    const args = [$("dialect").value, "/main.lua"].filter(Boolean);
+    try {
+      current = await startVlr(createVlr, {
+        files: { "/main.lua": $("code").value }, args,
+        print: (s) => add(s), printErr: (s) => add(s, "err"),
+        onExit: (c) => { $("status").textContent = c === 0 ? "finished" : "failed (exit " + c + ")"; current = null; },
+      });
+    } catch (e) { add(String(e), "err"); $("status").textContent = "error"; }
+  }
+  $("run").onclick = run;
+  $("form").onsubmit = (ev) => { ev.preventDefault(); if (current) current.sendInput($("stdin").value + "\n"); $("stdin").value = ""; };
+  $("status").textContent = "ready";
+</script>
+</body>
+</html>

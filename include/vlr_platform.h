@@ -50,6 +50,9 @@ int vlr_fs_stat(const char *path, vlr_stat *st);
  */
 int vlr_exec(const char *cmd);
 
+/* flush console output (a partial last line included) before the process or script ends */
+void vlr_flush(void);
+
 /* text of the last failed call above */
 const char *vlr_last_error(void);
 
