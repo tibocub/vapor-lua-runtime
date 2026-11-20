@@ -7,7 +7,9 @@ EXT     ?= ..
 LUASRC   = $(addprefix third_party/lua/,$(VLR_LUA_SRC))
 
 # modules.conf: sources (and -D flags) after the first two columns
-MODTOK  := $(shell awk '!/^[#]/ && NF>2 {for(i=3;i<=NF;i++) print $$i}' modules.conf | sed 's#@EXT@#$(EXT)#')
+MODULES ?=
+GEN     ?= build
+MODTOK  := $(shell sh tools/modsrc.sh modules.conf $(EXT) $(MODULES))
 MODSRC   = $(filter-out -%,$(MODTOK))
 MODFLAGS = $(filter -%,$(MODTOK))
 
@@ -36,7 +38,7 @@ LIBS     = -lm
 endif
 
 SRCS     = $(LUASRC) $(VLR_CORE_SRC) $(VLR_MAIN_SRC) $(PLATSRC) $(MODSRC) \
-           $(addprefix build/,$(addsuffix .c,$(VLR_LUA_EMBED))) build/vlr_modules.c
+           $(addprefix $(GEN)/,$(addsuffix .c,$(VLR_LUA_EMBED))) $(GEN)/vlr_modules.c
 OBJ      = $(addprefix $(OBJDIR)/,$(notdir $(SRCS:.c=.o)))
 VPATH    = src third_party/lua $(sort $(dir $(MODSRC)))
 
@@ -47,7 +49,7 @@ $(OBJDIR)/%.o: %.c
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(OBJDIR)/%.o: build/%.c
+$(OBJDIR)/%.o: $(GEN)/%.c
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
@@ -64,10 +66,15 @@ build/embed: tools/embed.c
 build/mkmodules: tools/mkmodules.c
 	@mkdir -p build
 	$(CC) -o $@ $<
-build/vlr_modules.c: modules.conf build/mkmodules
-	build/mkmodules modules.conf > $@
-build/%.c: lua/%.lua build/embed
+$(GEN)/vlr_modules.c: modules.conf build/mkmodules
+	@mkdir -p $(GEN)
+	build/mkmodules modules.conf $(MODULES) > $@
+$(GEN)/%.c: lua/%.lua build/embed
+	@mkdir -p $(GEN)
 	build/embed $* $< > $@
+
+# generated C (embedded Lua, module registry) only; for builds driven by another build system
+gen: $(addprefix $(GEN)/,$(addsuffix .c,$(VLR_LUA_EMBED))) $(GEN)/vlr_modules.c
 
 test: vlr$(EXE)
 	VLR="$(RUN) ./vlr$(EXE)" sh tests/run.sh
@@ -77,4 +84,4 @@ check: vlr
 
 clean:
 	rm -rf vlr vlr.exe vlr.js vlr.wasm build
-.PHONY: test check clean
+.PHONY: test check clean gen

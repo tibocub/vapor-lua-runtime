@@ -3,7 +3,7 @@
 cd "$(dirname "$0")/.." || exit 1
 set -e
 echo "== strict compile (our code only)"
-make -s build/vlr_modules.c build/compat.c build/sched.c
+make -s gen
 cc -std=c99 -pedantic -Wall -Wextra -Werror -Iinclude -Ithird_party/lua -fsyntax-only src/vlr.c src/main.c src/platform_posix.c
 echo "== tests under ASan+UBSan"
 make -s clean
