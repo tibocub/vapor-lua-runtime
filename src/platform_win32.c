@@ -1,6 +1,7 @@
 /* vlr backend for Windows (mingw or MSVC). Paths in and out are UTF-8. */
 #include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "vlr_platform.h"
@@ -17,7 +18,7 @@ static void seterr(void)
 
 const char *vlr_last_error(void) { return g_err; }
 
-uint32_t vlr_caps(void) { return VLR_CAP_FS | VLR_CAP_TTY; }
+uint32_t vlr_caps(void) { return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC; }
 
 int64_t vlr_now_ms(void)
 {
@@ -98,6 +99,15 @@ int vlr_fs_mkdir(const char *path)
 
     if (!towide(path, w, MAX_PATH) || !CreateDirectoryW(w, NULL)) { seterr(); return -1; }
     return 0;
+}
+
+int vlr_exec(const char *cmd)
+{
+    int r;
+
+    if (cmd == NULL) return 1;
+    r = system(cmd); /* shortcut: ANSI code page, not UTF-8; upgrade with _wsystem when a non-ASCII command matters */
+    return r == -1 ? (seterr(), -1) : r;
 }
 
 int vlr_fs_rmdir(const char *path)

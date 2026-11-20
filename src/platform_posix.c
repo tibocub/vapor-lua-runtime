@@ -13,7 +13,7 @@
 #ifndef VLR_POSIX_NO_WAIT /* wasm brings its own vlr_caps and a non-blocking vlr_wait */
 uint32_t vlr_caps(void)
 {
-    return VLR_CAP_FS | VLR_CAP_TTY;
+    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC;
 }
 #endif
 
@@ -77,6 +77,48 @@ int vlr_fs_stat(const char *path, vlr_stat *st)
     st->mtime = s.st_mtime;
     return 0;
 }
+
+#ifdef VLR_POSIX_NO_WAIT
+int vlr_exec(const char *cmd) /* wasm: no processes */
+{
+    errno = ENOSYS;
+    return cmd == NULL ? 0 : -1;
+}
+#elif defined(__NuttX__)
+/* NuttX has no system(): run the command through vaporShell (-c). The shell is VLR_NUTTX_SHELL. */
+#include <spawn.h>
+#include <sys/wait.h>
+#ifndef VLR_NUTTX_SHELL
+#define VLR_NUTTX_SHELL "vaporshell"
+#endif
+int vlr_exec(const char *cmd)
+{
+    char *argv[4];
+    pid_t pid;
+    int status = 0;
+
+    if (cmd == NULL) return 1;
+    argv[0] = (char *)VLR_NUTTX_SHELL;
+    argv[1] = (char *)"-c";
+    argv[2] = (char *)cmd;
+    argv[3] = NULL;
+    if (posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ) != 0) return -1;
+    if (waitpid(pid, &status, 0) < 0) return -1;
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 128;
+}
+#else
+#include <stdlib.h>
+#include <sys/wait.h>
+int vlr_exec(const char *cmd)
+{
+    int r;
+
+    if (cmd == NULL) return system(NULL) != 0;
+    r = system(cmd);
+    if (r == -1) return -1;
+    return WIFEXITED(r) ? WEXITSTATUS(r) : 128 + (WIFSIGNALED(r) ? WTERMSIG(r) : 0);
+}
+#endif
 
 const char *vlr_last_error(void)
 {

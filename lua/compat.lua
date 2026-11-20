@@ -42,3 +42,12 @@ function setfenv(f, t)
   if i then debug.upvaluejoin(fn, i, function() return t end, 1) end
   return fn
 end
+
+-- 5.1 os.execute returns the exit status (a number), not true/"exit"/code
+local execute = os.execute
+function os.execute(cmd)
+  if cmd == nil then return execute() and 1 or 0 end
+  local ok, _, code = execute(cmd)
+  if ok then return 0 end
+  return code or -1
+end

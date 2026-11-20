@@ -13,6 +13,7 @@
 #define VLR_CAP_GFX  0x04
 #define VLR_CAP_TTY  0x08
 #define VLR_CAP_DLOPEN 0x10
+#define VLR_CAP_EXEC 0x20
 
 #define VLR_MAX_FDS 64
 
@@ -42,6 +43,12 @@ int vlr_fs_list(const char *path, int (*cb)(void *ud, const char *name), void *u
 int vlr_fs_mkdir(const char *path);
 int vlr_fs_rmdir(const char *path); /* empty directories only; os.remove cannot do this on Windows */
 int vlr_fs_stat(const char *path, vlr_stat *st);
+
+/*
+ * Runs a shell command line (os.execute). Returns the exit code 0..255, or -1 with vlr_last_error set.
+ * cmd == NULL asks whether a shell exists: returns 1 or 0. Backends without one return -1/0 and omit VLR_CAP_EXEC.
+ */
+int vlr_exec(const char *cmd);
 
 /* text of the last failed call above */
 const char *vlr_last_error(void);

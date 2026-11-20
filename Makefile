@@ -49,11 +49,13 @@ $(OBJDIR)/%.o: %.c
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+$(OBJDIR)/vlr.o: CFLAGS += $(LUADEF) # vlr_lua_system must encode the status the way this Lua build decodes it
+
 $(OBJDIR)/%.o: $(GEN)/%.c
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF)
+$(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF) -include vlr_lua.h
 $(addprefix $(OBJDIR)/,$(notdir $(MODSRC:.c=.o))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
 $(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
 ifeq ($(TARGET),wasm)
