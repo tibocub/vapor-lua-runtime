@@ -126,7 +126,12 @@ hidden ("needs native `luasocket`, not built into this runtime"). This extends v
 
 - Engine: PUC Lua 5.4.x (currently 5.4.8), 64-bit integers and floats on every target (see lua-runtime.md:
   32-bit is not faster for floats and breaks semantics). Optional LuaJIT engine, see above.
-- Bytecode is **not** a distribution format (portable only within one number size and endianness): ship source.
+- Distribution format is **source**. Bytecode is an optional trusted-only artifact (`.vlb`): a fixed format
+  (little-endian, 64-bit integers/doubles, version and engine tag) written and read by our own dump/undump so it is
+  identical on every target. Never loaded from untrusted input (Lua has no bytecode verifier: crafted bytecode can
+  crash or exploit the VM). Gains: no parse step and no compiler RAM at load (lpeg's suite did not fit on the RP2040
+  to compile); it does **not** make the VM execute faster. A new VM is not planned: see the discussion in the
+  open questions.
 - Paths use `/` in the API on every target; the Windows backend translates.
 - No `fork`, no signals, no threads in the API.
 
@@ -165,6 +170,9 @@ not only Lua. A target is "supported" when it passes. Known per-target skips are
 
 ## Open questions
 
+- Own bytecode VM (instead of PUC 5.4 + patches)? Not now: revisit only if measurements show PUC's speed or RAM is
+  the blocker. Possible later wins that do not need a new VM: `.vlb` (above), and executing protos in place from
+  flash on RP2040 (NodeMCU's LFS does this).
 - **Dialect decision:** accept the 5.1-compatible intersection for portable code (my recommendation), or drop
   "same code on LuaJIT" and keep JIT out of scope?
 - Dynamic modules on Linux: prebuilt binaries per platform, or build from source on install (needs a compiler)?
