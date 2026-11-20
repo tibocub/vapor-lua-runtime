@@ -10,10 +10,12 @@
 
 #include "vlr_platform.h"
 
+#ifndef VLR_POSIX_NO_WAIT /* wasm brings its own vlr_caps and a non-blocking vlr_wait */
 uint32_t vlr_caps(void)
 {
     return VLR_CAP_FS | VLR_CAP_TTY;
 }
+#endif
 
 int64_t vlr_now_ms(void)
 {
@@ -22,6 +24,7 @@ int64_t vlr_now_ms(void)
     return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+#ifndef VLR_POSIX_NO_WAIT
 int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
 {
     struct pollfd p[VLR_MAX_FDS];
@@ -37,6 +40,8 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
     }
     return count;
 }
+
+#endif
 
 int vlr_fs_list(const char *path, int (*cb)(void *, const char *), void *ud)
 {

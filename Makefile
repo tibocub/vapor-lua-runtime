@@ -12,6 +12,7 @@ MODSRC   = $(filter-out -%,$(MODTOK))
 MODFLAGS = $(filter -%,$(MODTOK))
 
 TARGET  ?= posix
+RUN     ?=
 OBJDIR   = build/$(TARGET)
 ifeq ($(TARGET),win32)
 CC       = x86_64-w64-mingw32-gcc
@@ -19,6 +20,14 @@ EXE      = .exe
 PLATSRC  = src/platform_win32.c
 LUADEF   =
 LIBS     = -static
+else ifeq ($(TARGET),wasm)
+# needs `source ~/Code/emsdk/emsdk_env.sh`; this build is for Node (NODERAWFS), the browser build is later
+CC       = emcc
+EXE      = .js
+RUN      = node
+PLATSRC  = src/platform_wasm.c src/platform_posix.c
+LUADEF   = -DLUA_USE_POSIX
+LIBS     = -sNODERAWFS=1 -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0
 else
 EXE      =
 PLATSRC  = src/platform_posix.c
@@ -45,6 +54,9 @@ $(OBJDIR)/%.o: build/%.c
 $(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF)
 $(addprefix $(OBJDIR)/,$(notdir $(MODSRC:.c=.o))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
 $(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
+ifeq ($(TARGET),wasm)
+$(OBJDIR)/platform_posix.o: CFLAGS += -DVLR_POSIX_NO_WAIT
+endif
 
 build/embed: tools/embed.c
 	@mkdir -p build
@@ -58,11 +70,11 @@ build/%.c: lua/%.lua build/embed
 	build/embed $* $< > $@
 
 test: vlr$(EXE)
-	VLR=./vlr$(EXE) sh tests/run.sh
+	VLR="$(RUN) ./vlr$(EXE)" sh tests/run.sh
 
 check: vlr
 	sh tools/check.sh
 
 clean:
-	rm -rf vlr vlr.exe build
+	rm -rf vlr vlr.exe vlr.js vlr.wasm build
 .PHONY: test check clean

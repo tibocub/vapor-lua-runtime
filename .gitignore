@@ -2,3 +2,5 @@ build
 vlr
 *.o
 vlr.exe
+vlr.js
+vlr.wasm
