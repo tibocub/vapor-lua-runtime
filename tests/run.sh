@@ -12,4 +12,10 @@ for t in tests/*.lua; do
     else echo "FAIL $t $mode"; cat "${TMPDIR:-/tmp}/vlr-test.err"; fail=1; fi
   done
 done
+# os.exit closes the state (finalizers run) and keeps the status
+f="${TMPDIR:-/tmp}/vlr-exit.lua"
+printf 'setmetatable({}, {__gc = function() io.write("closed") end})\nos.exit(7)\n' > "$f"
+out=$($VLR "$f" </dev/null 2>/dev/null); rc=$?
+if [ "$rc" = 7 ] && [ "$out" = closed ]; then echo "ok   os.exit"; else echo "FAIL os.exit (rc=$rc out=$out)"; fail=1; fi
+rm -f "$f"
 exit $fail
