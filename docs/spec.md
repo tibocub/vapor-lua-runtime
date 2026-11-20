@@ -250,7 +250,7 @@ events yet (that is the next milestone), no wterm yet (plain `<pre>`).
 Bytes are decoded by `src/vtinput.c` (pure C: UTF-8, CSI/SS3 keys with modifiers, Shift+Tab, Alt+key, SGR mouse, split sequences,
 lone-ESC after 25 ms). The platform adds `vlr_console_read/raw/size`. Windows uses VT input mode (same decoder).
 Web: the page pushes the same events via `vlr.event(...)` / `attachEvents(el, vlr, cell)` in `web/vlr-glue.js`.
-The playground (`web/index.html`) makes the output pane the console: click it to focus, then keys, mouse, wheel and pane resizes reach the script ("Events demo" button). Wheel is captured while the pane has focus-less hover, so plain output cannot be scrolled by wheel yet.
+The playground (`web/index.html`) makes the output pane the console: click it to focus, then keys, mouse, wheel and pane resizes reach the script ("Events demo" button). The wheel goes to the script only while the pane has focus.
 Tests: `tests/decode.lua` (decoder), `tests/pty/run.py` (real pty: keys, mouse, ESC, resize), `web/ev-test.mjs` (page path).
 Shortcuts: resize is polled every 250 ms on native targets; Windows console path is untested under wine (no real console).
 Also: `VLR_STRIP_INTERNAL` strips debug info from our own Lua (heap -3.4 KB on host); Kconfig `VAPOROS_VLR_STRIP_INTERNAL` (default y).

@@ -60,5 +60,5 @@ export function attachEvents(el, vlr, cell) {
   el.addEventListener("mousedown", (e) => { const [x, y] = xy(e); el.focus(); vlr.event("mouse", "press", btn(e), x, y, mods(e)); });
   el.addEventListener("mouseup", (e) => { const [x, y] = xy(e); vlr.event("mouse", "release", btn(e), x, y, mods(e)); });
   el.addEventListener("mousemove", (e) => { const [x, y] = xy(e); vlr.event("mouse", e.buttons ? "drag" : "move", e.buttons ? 1 : 0, x, y, mods(e)); });
-  el.addEventListener("wheel", (e) => { const [x, y] = xy(e); vlr.event("mouse", e.deltaY < 0 ? "scroll_up" : "scroll_down", 0, x, y, mods(e)); e.preventDefault(); }, { passive: false });
+  el.addEventListener("wheel", (e) => { if (document.activeElement !== el) return; /* unfocused: let the page scroll */ const [x, y] = xy(e); vlr.event("mouse", e.deltaY < 0 ? "scroll_up" : "scroll_down", 0, x, y, mods(e)); e.preventDefault(); }, { passive: false });
 }
