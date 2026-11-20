@@ -87,6 +87,7 @@ int vlr_exec(const char *cmd) /* wasm: no processes */
 #elif defined(__NuttX__)
 /* NuttX has no system(): run the command through vaporShell (-c). The shell is VLR_NUTTX_SHELL. */
 #include <spawn.h>
+#include <stdlib.h> /* NuttX defines `environ` here as a call to its per-task environment */
 #include <sys/wait.h>
 #ifndef VLR_NUTTX_SHELL
 #define VLR_NUTTX_SHELL "vaporshell"

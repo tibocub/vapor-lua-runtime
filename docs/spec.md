@@ -185,7 +185,7 @@ not only Lua. A target is "supported" when it passes. Known per-target skips are
 
 Backends passing the same suite (`tests/*.lua`, each in normal and `--step` mode): Linux (posix), Windows (mingw
 under wine), WASM (emscripten under Node, no Asyncify), NuttX simulator (vaporOS `sim-vlr`, via the posix backend
-unchanged). Not yet run: real Windows, a browser, the RP2040 (build only).
+unchanged). RP2040-Zero (vaporOS `rp2040-vlr`, flashed 2026-11-20): `sched`, `events`, `compat51`, `dialect54`, `modules`, `exec`, `exec54` pass; `fs` passes from a writable directory (from `/`, a pseudo-filesystem, creating files fails by design). `fd` not run on the board (needs console input). Not yet run: real Windows, a browser.
 
 Measured (build only, no board connected): RP2040 image text size, `arm-none-eabi-size`:
 
@@ -197,5 +197,9 @@ Measured (build only, no board connected): RP2040 image text size, `arm-none-eab
 Not a fair comparison yet: vlua's image also has vsign (ed25519); vlr has the scheduler and fs API instead. Heap
 and stack on the board are unmeasured.
 
-NuttX quirks found: no `system()` here (`os.execute` is stubbed through Lua's `l_system` hook), and `stat(".")` fails
+RP2040 heap: `free` after 20 runs of `events.lua` grew by 200 bytes (no leak); peak used 120 KB of 244 KB during the suite.
+
+`os.execute` is `vlr_exec` in the platform interface: `system()` on POSIX/Windows, `vaporshell -c` on NuttX (works on the sim and the RP2040), unavailable on wasm (`vapor.caps.exec` false).
+
+NuttX quirks found: no `system()` here (hence `vlr_exec`), `environ` is a macro from `<stdlib.h>` (not linkable), and `stat(".")` fails
 (a relative "." is not resolved), so tests and modules must use real paths.
