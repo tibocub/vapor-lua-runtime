@@ -27,7 +27,7 @@ EXE      = .js
 RUN      = node
 PLATSRC  = src/platform_wasm.c src/platform_posix.c
 LUADEF   = -DLUA_USE_POSIX
-LIBS     = -sNODERAWFS=1 -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0
+LIBS     = -sNODERAWFS=1 -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=1
 else
 EXE      =
 PLATSRC  = src/platform_posix.c
