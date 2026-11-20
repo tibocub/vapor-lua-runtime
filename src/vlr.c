@@ -115,13 +115,16 @@ static int runembedded(lua_State *L, const unsigned char *src, unsigned int len,
     return luaL_loadbuffer(L, (const char *)src, len, name) || lua_pcall(L, 0, 0, 0);
 }
 
-lua_State *vlr_newstate(int dialect51)
+void vlr_modules_open(lua_State *L); /* generated from modules.conf */
+
+lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
 {
     static const luaL_Reg fs[] = {{"list", l_list}, {"mkdir", l_mkdir}, {"stat", l_stat}, {NULL, NULL}};
-    lua_State *L = luaL_newstate();
+    lua_State *L = alloc ? lua_newstate(alloc, ud) : luaL_newstate();
 
     if (L == NULL) return NULL;
     luaL_openlibs(L);
+    vlr_modules_open(L);
     vlr_dotzero = !dialect51;
 
     lua_newtable(L); /* vapor */
@@ -147,12 +150,13 @@ lua_State *vlr_newstate(int dialect51)
     return L;
 }
 
-int vlr_run_file(lua_State *L, const char *path, int argc, char **argv)
+int vlr_spawn_file(lua_State *L, const char *path, int argc, char **argv)
 {
-    int i, code = 0;
+    int i;
 
     if (luaL_loadfile(L, path) != LUA_OK) {
         fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
         return 1;
     }
     lua_newtable(L); /* arg */
@@ -164,17 +168,57 @@ int vlr_run_file(lua_State *L, const char *path, int argc, char **argv)
     }
     lua_setglobal(L, "arg");
 
-    /* vapor.main(fn, args...) runs fn as the first task and the scheduler; returns an exit code */
     lua_getglobal(L, "vapor");
-    lua_getfield(L, -1, "main");
+    lua_getfield(L, -1, "spawn");
     lua_remove(L, -2);
-    lua_insert(L, -2);
+    lua_insert(L, -2); /* spawn, fn */
     for (i = 0; i < argc; i++) lua_pushstring(L, argv[i]);
-    if (lua_pcall(L, 1 + argc, 1, 0) != LUA_OK) {
+    if (lua_pcall(L, 1 + argc, 0, 0) != LUA_OK) {
         fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
         return 1;
     }
-    code = (int)lua_tointeger(L, -1);
+    return 0;
+}
+
+int vlr_step(lua_State *L, int max_ms, int *next_ms)
+{
+    int r;
+
+    lua_getglobal(L, "vapor");
+    lua_getfield(L, -1, "step");
+    lua_remove(L, -2);
+    if (max_ms >= 0) lua_pushinteger(L, max_ms);
+    else lua_pushnil(L);
+    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+        fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return -1;
+    }
+    r = !lua_isnil(L, -1);
+    if (r && next_ms != NULL) *next_ms = (int)lua_tointeger(L, -1);
     lua_pop(L, 1);
-    return code;
+    return r;
+}
+
+int vlr_failed(lua_State *L)
+{
+    int r;
+
+    lua_getglobal(L, "vapor");
+    lua_getfield(L, -1, "failed");
+    lua_remove(L, -2);
+    lua_call(L, 0, 1);
+    r = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+    return r;
+}
+
+int vlr_run_file(lua_State *L, const char *path, int argc, char **argv)
+{
+    int r;
+
+    if (vlr_spawn_file(L, path, argc, argv) != 0) return 1;
+    while ((r = vlr_step(L, -1, NULL)) > 0) {}
+    return r < 0 || vlr_failed(L);
 }

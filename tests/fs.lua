@@ -1,6 +1,5 @@
 assert(vapor.caps.fs == true and type(vapor.caps.net) == "boolean")
-local d = os.tmpname()
-os.remove(d)
+local d = (os.getenv("TMPDIR") or ".") .. "/vlr-fs-test-" .. os.time()
 assert(vapor.fs.mkdir(d))
 assert(vapor.fs.stat(d).type == "dir")
 local f = assert(io.open(d .. "/x.txt", "w")); f:write("hello"); f:close()

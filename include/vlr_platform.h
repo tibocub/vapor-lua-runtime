@@ -28,6 +28,9 @@ uint32_t vlr_caps(void);
 int64_t vlr_now_ms(void);
 
 /*
+ * fds are backend handles: real file descriptors on POSIX and NuttX; on other backends whatever the backend maps
+ * (0 is always the console input, 1/2 are not waitable). Windows consoles and wasm have no pollable fds.
+ *
  * Block until one of fds[0..n) is readable or timeout_ms elapses (-1 = no timeout, 0 = just poll).
  * Sets ready[i] to 1 or 0. Returns the number of ready fds, 0 on timeout, -1 on error.
  * A backend without blocking (wasm) may return early; the scheduler loops.

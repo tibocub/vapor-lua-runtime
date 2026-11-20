@@ -99,37 +99,47 @@ local function pending_fds()
   return list
 end
 
-function vapor.run()
-  while true do
-    while #ready > 0 do
-      local q = ready
-      ready = {}
-      for i = 1, #q do step(unpack(q[i])) end
-    end
-    local fds = pending_fds()
-    if #timers == 0 and #fds == 0 then break end -- nothing can ever wake a task
-    local timeout
-    if #timers > 0 then
-      local first = timers[1].at
-      for i = 2, #timers do if timers[i].at < first then first = timers[i].at end end
-      timeout = math.max(0, first - now())
-    end
-    for _, fd in ipairs(cwait(fds, timeout) or {}) do
-      local l = fdw[fd]
-      fdw[fd] = nil
-      for _, tok in ipairs(l or {}) do wake(tok, fd) end
-    end
-    local t, due, keep = now(), {}, {}
-    for _, e in ipairs(timers) do if e.at <= t then due[#due + 1] = e else keep[#keep + 1] = e end end
-    timers = keep
-    table.sort(due, function(a, b) return a.at < b.at end)
-    for _, e in ipairs(due) do e.fn() end
+local function drain()
+  while #ready > 0 do
+    local q = ready
+    ready = {}
+    for i = 1, #q do step(unpack(q[i])) end
   end
 end
 
--- runs fn as the first task, then everything it started; exit code 1 if any task raised
-function vapor.main(fn, ...)
-  vapor.spawn(fn, ...)
-  vapor.run()
-  return failed and 1 or 0
+local function deadline() -- ms until the earliest timer, or nil
+  if #timers == 0 then return nil end
+  local first = timers[1].at
+  for i = 2, #timers do if timers[i].at < first then first = timers[i].at end end
+  return math.max(0, first - now())
 end
+
+-- One turn of the loop, for a host that owns the main loop (browser, GUI toolkit): runs ready tasks, waits at most
+-- max_ms (nil = until the next timer/fd), wakes what is due, runs ready tasks again.
+-- Returns nil when nothing is left to do, else ms until the next timer (-1 if only waiting on fds).
+function vapor.step(max_ms)
+  drain()
+  local fds = pending_fds()
+  if #timers == 0 and #fds == 0 then return nil end -- nothing can ever wake a task
+  local timeout = deadline()
+  if max_ms and (not timeout or max_ms < timeout) then timeout = max_ms end
+  for _, fd in ipairs(cwait(fds, timeout) or {}) do
+    local l = fdw[fd]
+    fdw[fd] = nil
+    for _, tok in ipairs(l or {}) do wake(tok, fd) end
+  end
+  local t, due, keep = now(), {}, {}
+  for _, e in ipairs(timers) do if e.at <= t then due[#due + 1] = e else keep[#keep + 1] = e end end
+  timers = keep
+  table.sort(due, function(a, b) return a.at < b.at end)
+  for _, e in ipairs(due) do e.fn() end
+  drain()
+  if #timers == 0 and #pending_fds() == 0 then return nil end
+  return deadline() or -1
+end
+
+function vapor.run()
+  while vapor.step() do end
+end
+
+function vapor.failed() return failed end
