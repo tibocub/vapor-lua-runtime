@@ -4,3 +4,5 @@ vlr
 vlr.exe
 vlr.js
 vlr.wasm
+web/vlr.js
+web/vlr.wasm

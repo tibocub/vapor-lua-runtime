@@ -185,7 +185,7 @@ not only Lua. A target is "supported" when it passes. Known per-target skips are
 
 Backends passing the same suite (`tests/*.lua`, each in normal and `--step` mode): Linux (posix), Windows (mingw
 under wine), WASM (emscripten under Node, no Asyncify), NuttX simulator (vaporOS `sim-vlr`, via the posix backend
-unchanged). RP2040-Zero (vaporOS `rp2040-vlr`, flashed 2026-11-20): `sched`, `events`, `compat51`, `dialect54`, `modules`, `exec`, `exec54` pass; `fs` passes from a writable directory (from `/`, a pseudo-filesystem, creating files fails by design). `fd` not run on the board (needs console input). Not yet run: real Windows, a browser.
+unchanged). RP2040-Zero (vaporOS `rp2040-vlr`, flashed 2026-11-20): `sched`, `events`, `compat51`, `dialect54`, `modules`, `exec`, `exec54` pass; `fs` passes from a writable directory (from `/`, a pseudo-filesystem, creating files fails by design). `fd` not run on the board (needs console input). Browser (`make TARGET=web`, 373 KB wasm + 194 KB glue JS): the suite passes under Node (`VLR="node web/run.mjs" sh tests/run.sh`) and the playground page `web/index.html` ran a script with sleeps and console input in headless Firefox (output and `io.read` after `vapor.wait_fd(0)` verified). Not yet run: real Windows, a browser with a person typing, wterm.
 
 Measured (build only, no board connected): RP2040 image text size, `arm-none-eabi-size`:
 
@@ -231,3 +231,13 @@ Reading: the interpreter speed equals vlua's (same VM). The limits that bite are
 a script's data, and about 1400 Lua frames), compile memory (about 20-30 KB of source per file) and timer resolution.
 Not measured: stack high-water mark (`ps` STACK/USED), the 6x string-benchmark slowdown from GC 100/400 on this exact
 image, and a larger-script comparison between source and bytecode.
+
+## Browser build (`make TARGET=web`)
+
+`web/vlr.js` + `web/vlr.wasm`: an ES module factory `createVlr()`. `web/vlr-glue.js` (`startVlr`) puts files in MEMFS, calls main, and
+feeds stdin; `web/index.html` is a playground (editor, dialect choice, output, input line). Serve `web/` with any static server.
+No Asyncify and no threads: the loop is driven by JS timers calling `vlr_step`; input calls `vlr_wasm_wake`.
+Stdin rule: scripts wait with `vapor.wait_fd(0)` and then read; a read on an empty buffer returns EOF (a browser cannot block).
+`os.execute` is unavailable there (`vapor.caps.exec == false`). Each Run creates a fresh instance (one Lua state per run).
+Limits: output is line-buffered by emscripten (`vlr_flush` pushes a partial last line at exit); no keyboard/mouse/resize
+events yet (that is the next milestone), no wterm yet (plain `<pre>`).

@@ -54,6 +54,9 @@ print("hi " .. tostring(io.read("l")))</textarea>
   $("run").onclick = run;
   $("form").onsubmit = (ev) => { ev.preventDefault(); if (current) current.sendInput($("stdin").value + "\n"); $("stdin").value = ""; };
   $("status").textContent = "ready";
+  // lets a headless browser capture a run: top-level await holds the load event while the script runs
+  if (location.hash === "#autorun") { await run(); await new Promise((r) => setTimeout(r, 2500)); const inp = new URLSearchParams(location.search).get("input"); if (inp !== null && current) { current.sendInput(inp + "\n"); await new Promise((r) => setTimeout(r, 500)); }
+    if (location.search.includes("report")) fetch("/report", { method: "POST", body: $("status").textContent + "\n" + $("out").textContent }); }
 </script>
 </body>
 </html>
