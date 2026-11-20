@@ -44,7 +44,7 @@ Required (small on purpose, target < 15 functions):
 | `vlr_wait(fds, n, timeout_ms)` | block until an fd is ready, input arrives or timeout; on wasm it returns to the host and resumes on the next host event |
 | `vlr_poll_event(ev)` | next input event (key, mouse, resize), non-blocking |
 | `vlr_stdio_*` | raw console in/out |
-| `vlr_fs_*` | list, mkdir, stat (what plain Lua lacks) |
+| `vlr_fs_*` | list, mkdir, rmdir, stat (what plain Lua lacks; `os.remove` cannot delete directories on Windows) |
 | `vlr_net_*` | optional (caps) |
 | `vlr_gfx_*`, `vlr_audio_*` | optional (caps); reuse vaporUI backends where possible |
 

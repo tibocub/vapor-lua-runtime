@@ -40,6 +40,7 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms);
 /* calls cb for every entry except . and ..; a non-zero return from cb stops the listing */
 int vlr_fs_list(const char *path, int (*cb)(void *ud, const char *name), void *ud);
 int vlr_fs_mkdir(const char *path);
+int vlr_fs_rmdir(const char *path); /* empty directories only; os.remove cannot do this on Windows */
 int vlr_fs_stat(const char *path, vlr_stat *st);
 
 /* text of the last failed call above */

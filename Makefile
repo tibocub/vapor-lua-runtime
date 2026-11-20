@@ -10,17 +10,41 @@ LUASRC   = $(addprefix third_party/lua/,$(VLR_LUA_SRC))
 MODTOK  := $(shell awk '!/^[#]/ && NF>2 {for(i=3;i<=NF;i++) print $$i}' modules.conf | sed 's#@EXT@#$(EXT)#')
 MODSRC   = $(filter-out -%,$(MODTOK))
 MODFLAGS = $(filter -%,$(MODTOK))
-MODOBJ   = $(MODSRC:.c=.o)
 
-OBJ      = $(LUASRC:.c=.o) $(VLR_CORE_SRC:.c=.o) $(VLR_MAIN_SRC:.c=.o) src/platform_posix.o \
-           $(addprefix build/,$(addsuffix .o,$(VLR_LUA_EMBED))) build/vlr_modules.o $(MODOBJ)
+TARGET  ?= posix
+OBJDIR   = build/$(TARGET)
+ifeq ($(TARGET),win32)
+CC       = x86_64-w64-mingw32-gcc
+EXE      = .exe
+PLATSRC  = src/platform_win32.c
+LUADEF   =
+LIBS     = -static
+else
+EXE      =
+PLATSRC  = src/platform_posix.c
+LUADEF   = -DLUA_USE_POSIX
+LIBS     = -lm
+endif
 
-vlr: $(OBJ)
-	$(CC) $(LDFLAGS) -o $@ $(OBJ) -lm
+SRCS     = $(LUASRC) $(VLR_CORE_SRC) $(VLR_MAIN_SRC) $(PLATSRC) $(MODSRC) \
+           $(addprefix build/,$(addsuffix .c,$(VLR_LUA_EMBED))) build/vlr_modules.c
+OBJ      = $(addprefix $(OBJDIR)/,$(notdir $(SRCS:.c=.o)))
+VPATH    = src third_party/lua $(sort $(dir $(MODSRC)))
 
-third_party/lua/%.o: CFLAGS += -DLUA_USE_POSIX
-$(MODOBJ): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
-src/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
+vlr$(EXE): $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $(OBJ) $(LIBS)
+
+$(OBJDIR)/%.o: %.c
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/%.o: build/%.c
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF)
+$(addprefix $(OBJDIR)/,$(notdir $(MODSRC:.c=.o))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
+$(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
 
 build/embed: tools/embed.c
 	@mkdir -p build
@@ -33,12 +57,12 @@ build/vlr_modules.c: modules.conf build/mkmodules
 build/%.c: lua/%.lua build/embed
 	build/embed $* $< > $@
 
-test: vlr
-	sh tests/run.sh
+test: vlr$(EXE)
+	VLR=./vlr$(EXE) sh tests/run.sh
 
 check: vlr
 	sh tools/check.sh
 
 clean:
-	rm -rf vlr build src/*.o third_party/lua/*.o $(MODOBJ)
+	rm -rf vlr vlr.exe build
 .PHONY: test check clean

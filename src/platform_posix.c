@@ -57,6 +57,11 @@ int vlr_fs_mkdir(const char *path)
     return mkdir(path, 0777);
 }
 
+int vlr_fs_rmdir(const char *path)
+{
+    return rmdir(path);
+}
+
 int vlr_fs_stat(const char *path, vlr_stat *st)
 {
     struct stat s;

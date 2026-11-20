@@ -78,6 +78,13 @@ static int l_mkdir(lua_State *L)
     return 1;
 }
 
+static int l_rmdir(lua_State *L)
+{
+    if (vlr_fs_rmdir(luaL_checkstring(L, 1)) != 0) return fail(L);
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
 static int l_stat(lua_State *L)
 {
     vlr_stat st;
@@ -119,7 +126,7 @@ void vlr_modules_open(lua_State *L); /* generated from modules.conf */
 
 lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
 {
-    static const luaL_Reg fs[] = {{"list", l_list}, {"mkdir", l_mkdir}, {"stat", l_stat}, {NULL, NULL}};
+    static const luaL_Reg fs[] = {{"list", l_list}, {"mkdir", l_mkdir}, {"rmdir", l_rmdir}, {"stat", l_stat}, {NULL, NULL}};
     lua_State *L = alloc ? lua_newstate(alloc, ud) : luaL_newstate();
 
     if (L == NULL) return NULL;
