@@ -42,7 +42,8 @@ rm -f "$f"
 # TLS against local openssl servers (posix hosts)
 if [ "$VLR" = ./vlr ]; then sh tests/tls/run.sh || fail=1; fi
 
-# -e and the prompt (no script)
+# -e and the prompt (no script); the browser/Node runner (web/run.mjs) only takes a script
+case $VLR in *run.mjs*) exit $fail ;; esac
 out=$($VLR -e 'io.write(40 + 2)' </dev/null 2>&1)
 if [ "$out" = 42 ]; then echo "ok   -e"; else echo "FAIL -e (out=$out)"; fail=1; fi
 out=$(printf '6 * 7\n' | $VLR 2>&1 | tr -d '\r')
