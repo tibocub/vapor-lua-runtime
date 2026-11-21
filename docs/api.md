@@ -23,7 +23,7 @@ All functions live on the global `vapor` table, which is a lazy facade: `vapor.f
 |---|---|---|
 | `vapor.spawn(fn, ...)` | stable | start a task; returns its coroutine |
 | `vapor.sleep(seconds)` | stable | pause this task; other tasks run (millisecond resolution) |
-| `vapor.wait_fd(fd, timeout?)` | stable | wait until the handle is readable; returns `fd`, or `nil, "timeout"`. Handle 0 = console input; other handles are backend specific |
+| `vapor.wait_fd(fd, timeout?, mode?)` | stable | wait until the handle is readable (`mode "w"`: writable); returns `fd`, or `nil, "timeout"`. Handle 0 = console input; other handles are backend specific |
 | `vapor.pull(timeout?)` | stable | next event `(name, ...)` or `nil, "timeout"` |
 | `vapor.push(name, ...)` | stable | queue an event (wakes a task blocked in `pull`) |
 | `vapor.timer(seconds)` | stable | pushes `("timer", id)` after the delay; returns `id` |
@@ -64,6 +64,10 @@ Experimental. Functions: `require("vapor.manifest").load(dir)`, `.check(m, dir)`
 
 `os.execute` works as in Lua (`vapor.caps.exec`); `os.exit` closes the Lua state first so finalizers run. Both are standard names, not `vapor.*`.
 
-## Not in 0.1 (planned, experimental when they appear)
+## Networking and streams (optional modules `vapor.net`, `vapor.stream`)
 
-`vapor.net` (TCP/UDP/DNS), `vapor.spawn_process` (subprocess with pipes), `vapor.worker`, `vapor.gfx`, application manifests, `vapor.sandbox`.
+Experimental; see [net.md](net.md). `vapor.caps.net` says whether the build and platform have sockets.
+
+## Not yet (planned, experimental when they appear)
+
+TLS, `vapor.spawn_process` (subprocess with pipes), `vapor.worker`, `vapor.gfx`, application manifests, `vapor.sandbox`.
