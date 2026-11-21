@@ -324,3 +324,8 @@ modules count, no file search); `vapor.size` stays as an alias into `vapor.term`
 (a persistent readable-handle callback; `vapor.input` uses it for the console, `vapor.net` will for sockets).
 Heap at start of a script (host, same one-line script): 46.1 KB before the split, 44.2 KB after (40.3 KB with the internal Lua stripped).
 Still to do for 0.2: app manifest check, rockspec reading in `vlr-build`, the 5.1 C-API shims test with more real rocks.
+
+`tools/vlr-build add-rock ROCKSPEC SRCDIR [--write]` turns a builtin-type rockspec into `modules.conf` lines (`tools/rock2conf.lua`, run by vlr itself):
+`sources`, `defines`, `incdirs` and `luaopen_` names (dots to underscores, hyphen suffix dropped) for C modules, `name lua:file` for Lua files. Rocks with
+other build types or external `libraries` are refused. Verified: the lfs and lua-cjson rockspecs reproduce their existing `modules.conf` lines exactly
+(`tests/rock` pins the rules). Lua-file modules may use `@EXT@` too (`VLR_EXT`, set by the Makefile from `EXT`).

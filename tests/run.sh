@@ -18,6 +18,12 @@ if [ "$out" = "hello app	x	tests/app/good/main.lua" ]; then echo "ok   app folde
 out=$($VLR tests/app/bad </dev/null 2>&1); rc=$?
 if [ "$rc" = 1 ] && echo "$out" | grep -q "needs module nosuch" && ! echo "$out" | grep -q "must not run"; then echo "ok   app refused"; else echo "FAIL app refused (rc=$rc): $out"; fail=1; fi
 
+# rockspec -> modules.conf lines (tools/rock2conf.lua)
+if [ "$VLR" = ./vlr ]; then
+  out=$(./vlr tools/rock2conf.lua tests/rock/toy-1.rockspec tests/rock 2>&1)
+  if [ "$out" = "$(cat tests/rock/expected.conf)" ]; then echo "ok   rock2conf"; else echo "FAIL rock2conf: $out"; fail=1; fi
+fi
+
 # the real terminal path through a pty (posix hosts only)
 if [ "$VLR" = ./vlr ] && command -v python3 >/dev/null 2>&1; then
   python3 -I tests/pty/run.py || fail=1

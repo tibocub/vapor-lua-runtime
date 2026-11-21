@@ -1,9 +1,16 @@
 #!/bin/sh
-# vlr-build [profile] | --list : build a vlr with a chosen set of native modules for one target.
+# vlr-build [profile] | --list | add-rock ROCKSPEC SRCDIR [--write] : build a vlr with a chosen set of native modules for one target.
 # A profile is `key = value` lines: target (posix|win32|wasm|web), modules (names from modules.conf, empty = all),
 # ext (folder with the sibling checkouts), out (output file). Command line: vlr-build mini.vlrprofile
 # shortcut: drives the Makefile; the vpm side (device-aware dependency check against vapor.builtin) is not built yet.
 cd "$(dirname "$0")/.." || exit 1
+if [ "$1" = add-rock ]; then
+  # vlr-build add-rock ROCKSPEC SRCDIR [--write] : modules.conf lines for a builtin-type rock (printed, or appended with --write)
+  [ -x ./vlr ] || make -s vlr >/dev/null || exit 1
+  lines=$(./vlr tools/rock2conf.lua "$2" "$3") || exit 1
+  if [ "$4" = --write ]; then printf '%s\n' "$lines" >> modules.conf; else printf '%s\n' "$lines"; fi
+  exit 0
+fi
 if [ "$1" = --list ]; then awk '!/^#/ && NF > 2 { print $1 }' modules.conf; exit 0; fi
 target=posix modules= ext= out=
 if [ -n "$1" ]; then

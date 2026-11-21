@@ -92,7 +92,7 @@ build/modules.stamp: FORCE
 FORCE:
 $(GEN)/vlr_modules.c: modules.conf build/mkmodules build/modules.stamp
 	@mkdir -p $(GEN)
-	build/mkmodules modules.conf $(MODULES) > $@
+	VLR_EXT=$(EXT) build/mkmodules modules.conf $(MODULES) > $@
 $(GEN)/%.c: lua/%.lua build/embed
 	@mkdir -p $(GEN)
 	build/embed $* $< > $@

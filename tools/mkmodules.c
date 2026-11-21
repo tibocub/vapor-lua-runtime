@@ -16,7 +16,19 @@ static void embed(const char *dir, const char *spec, int idx)
     int c, n = 0;
 
     snprintf(path, sizeof path, "%s", spec);
-    if ((at = strstr(path, "@VLR@")) != NULL) snprintf(at, sizeof path - (size_t)(at - path), "%s%s", dir, spec + (at - path) + 5);
+    if ((at = strstr(path, "@VLR@")) != NULL) {
+        char rest[1024];
+
+        snprintf(rest, sizeof rest, "%s", at + 5);
+        snprintf(at, sizeof path - (size_t)(at - path), "%s%s", dir, rest);
+    }
+    if ((at = strstr(path, "@EXT@")) != NULL) { /* sibling checkouts: VLR_EXT in the environment, as the Makefile's EXT */
+        char rest[1024];
+        const char *ext = getenv("VLR_EXT");
+
+        snprintf(rest, sizeof rest, "%s", at + 5);
+        snprintf(at, sizeof path - (size_t)(at - path), "%s%s", ext ? ext : "..", rest);
+    }
     if ((f = fopen(path, "rb")) == NULL) { fprintf(stderr, "mkmodules: cannot read %s\n", path); exit(1); }
     printf("static const unsigned char lua_%d[] = {", idx);
     while ((c = fgetc(f)) != EOF) printf("%s%d,", n++ % 24 ? "" : "\n", c);
