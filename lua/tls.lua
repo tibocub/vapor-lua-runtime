@@ -4,8 +4,8 @@
 --   opts.ca = PEM text or anchors | opts.cafile = path of a PEM bundle | opts.timeout   (default: $VLR_CA_FILE, $SSL_CERT_FILE, then the system bundle)
 --   tls.anchors(pem) -> trust anchors to reuse for many connections
 -- The engine (vapor.tlsraw) does no I/O; this file moves its bytes, so waiting stays in the scheduler. The stream is the one from vapor.stream.
--- shortcut: a peer that closes the transport without close_notify reads as end of data (truncation is not told apart). On Windows the trusted roots come
--- from the certificate store (the ROOT store, read once per process).
+-- shortcut: a peer that closes the transport without close_notify reads as end of data (truncation is not told apart). Where the system has no bundle file the roots come from
+-- the Windows certificate store (ROOT store) plus the built-in Mozilla list (vapor.cacerts, tools/mkcacerts.sh), read once per process.
 local raw = require("vapor.tlsraw")
 local stream = require("vapor.stream")
 local M = {}
@@ -36,16 +36,22 @@ local function load_anchors(opts)
       if p ~= "" and slurp(p) then key = p; break end
     end
   end
-  if not key and not ca then -- no bundle file: the Windows certificate store
-    local pem = raw.system_roots()
-    if pem then
-      if not cache.system then
-        local a, err = raw.anchors(pem)
+  if not key and not ca then
+    -- no bundle file: the system's certificate store (Windows) plus the built-in Mozilla roots (vapor.cacerts, if this build has them). Windows keeps only some roots
+    -- in its store and fetches the others when a chain needs them, so the store alone is not enough for a client that does not build chains through the OS.
+    if not cache.system then
+      local parts = {}
+      local sys = raw.system_roots()
+      if sys then parts[#parts + 1] = sys end
+      local ok, builtin = pcall(require, "vapor.cacerts")
+      if ok then parts[#parts + 1] = builtin end
+      if #parts > 0 then
+        local a, err = raw.anchors(table.concat(parts, "\n"))
         if not a then return nil, err end
         cache.system = a
       end
-      return cache.system
     end
+    if cache.system then return cache.system end
   end
   if not key then return nil, "no trusted certificates: pass opts.ca (PEM text) or opts.cafile, or set VLR_CA_FILE" end
   if cache[key] then return cache[key] end

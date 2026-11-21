@@ -28,7 +28,7 @@ main() {
   [ -d ../luafilesystem ] || { git clone -q https://github.com/lunarmodules/luafilesystem ../luafilesystem && git -C ../luafilesystem checkout -q 146ab458e821cd7617892099fe8e6e399b46185c; }
   [ -d ../lua-cjson ] || { git clone -q https://github.com/mpx/lua-cjson ../lua-cjson && git -C ../lua-cjson checkout -q 718f27293a981fb5e9e662e9aec0b7cf78317da6; }
   [ -d ../lpeg-1.1.0 ] || curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
-  [ -d ../vaporUI ] && git -C ../vaporUI pull -q --ff-only # we track the latest vaporUI on purpose
+  [ -d ../vaporUI ] && { git -C ../vaporUI pull -q --ff-only 2>/dev/null || echo "(vaporUI not updated: pull it by hand if the build fails)"; } # we track the latest vaporUI on purpose
   [ -d ../vaporUI ] || git clone -q --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
   [ -d ../Monocypher ] || { git clone -q https://github.com/LoupVaillant/Monocypher ../Monocypher && git -C ../Monocypher checkout -q ab2b16dd619ad5f6979a4fbe69cfa324a6fcc35f; }
   [ -d ../BearSSL ] || { git clone -q https://www.bearssl.org/git/BearSSL ../BearSSL && git -C ../BearSSL checkout -q 7bea48e5e850ab4cafbe68d3765cdaba13a86d6f; }
