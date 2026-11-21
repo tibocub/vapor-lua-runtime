@@ -162,7 +162,7 @@ void vlr_modules_open(lua_State *L); /* generated from modules.conf */
 extern const char *const vlr_builtin[]; /* NULL-terminated names of the compiled-in modules, same source */
 
 #ifndef VLR_VERSION
-#define VLR_VERSION "0.1.0"
+#define VLR_VERSION "0.2.0"
 #endif
 
 #if defined(__EMSCRIPTEN__)

@@ -1,8 +1,8 @@
-# vlr API reference (version 0.1)
+# vlr API reference (version 0.2)
 
-Stability: **stable** = frozen at 0.2 (semantic versioning on `vapor.version`; breaking changes only in a major release).
+Stability: **stable** = frozen since 0.2 (semantic versioning on `vapor.version`; breaking changes only in a major release).
 **experimental** = may change, graduates after real use. **internal** = used by the embedded Lua code, not part of the API.
-Until 0.2 everything is technically experimental; the marks below are the intent. Tests in `tests/` are the executable spec.
+Since 0.2 the names marked stable are frozen. Tests in `tests/` are the executable spec.
 
 All functions live on the global `vapor` table, which is a lazy facade: `vapor.fs`, `vapor.input` (and `vapor.size`) load their optional modules on first access, and are `nil` in a build without them. `require("vapor.fs")` works too.
 "Task" = a coroutine started with `vapor.spawn`, or the main script, which is itself a task.
@@ -58,7 +58,7 @@ While `input` is on, the console belongs to the events: do not also read it with
 `vlr <folder>` runs an app folder: `manifest.lua` (data only, evaluated with an empty environment) plus the entry script (default `main.lua`).
 Fields: `name`, `version`, `entry`, `needs = {vlr = "0.2", dialect = "5.4", caps = {...}, modules = {...}}`. Modules count if built in (`vapor.builtin`) or
 found as Lua files in `<folder>/lua_modules` or `<folder>`. If anything is missing the app is refused with the reasons and exit status 1.
-Experimental until 0.2. Functions: `require("vapor.manifest").load(dir)`, `.check(m, dir)`, `.main(dir, ...)`.
+Experimental. Functions: `require("vapor.manifest").load(dir)`, `.check(m, dir)`, `.main(dir, ...)`.
 
 ## Process
 

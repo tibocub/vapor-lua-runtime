@@ -1,6 +1,6 @@
 # vlr: portable Lua runtime (vapor lua runtime)
 
-Status (2026-11-21): **working runtime, version 0.1.** Runs the same conformance suite on Linux, Windows (including a real
+Status (2026-11-21): **working runtime, version 0.2.** Runs the same conformance suite on Linux, Windows (including a real
 Windows pseudo-console suite), the browser (WASM, Node and Firefox), the NuttX simulator and the RP2040. Started 2026-11-19; extends
 and replaces `vlua` (vaporOS/vlua, which was a draft). Sections below that describe design are still the intent; the per-target
 sections at the end record what was measured. Direction and decisions: "Vision and decisions" right below.
@@ -335,3 +335,9 @@ passed a round-trip script: `lua-cmsgpack` (a 5.1-era single file) and `luautf8`
 utf8 library symbol and its file is called `lutf8lib.c` like Lua's. Fixed in the build, not in the rock: module objects are named from their whole path
 (`build/<target>/m_<path>.o`), and `rock2conf` renames a clashing `luaopen_` symbol with `-Dluaopen_utf8=luaopen_rock_<name>`. These two are not in `modules.conf`
 (default builds must not need checkouts nobody has); `vlr-build add-rock` adds them where wanted.
+
+## Version 0.2.0 (2026-11-21)
+
+Module split, app manifests and rockspec reading are done, so the core names in `docs/api.md` are frozen (tag `v0.2.0`). Board check on the RP2040
+(`rp2040-vlr`, flashed): `identity`, `decode`, `sched`, `events`, `compat51`, `modules` pass; keys and mouse arrive through the lazy `vapor.input`; Lua heap at
+start of a script 30.3 KB (31.8 KB before the split). Not re-run on the board after the split: `fs`, `exec`, `fd`, the lfs suite. NuttX sim image builds.
