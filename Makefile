@@ -78,7 +78,12 @@ build/embed: tools/embed.c
 build/mkmodules: tools/mkmodules.c
 	@mkdir -p build
 	$(CC) -o $@ $<
-$(GEN)/vlr_modules.c: modules.conf build/mkmodules
+# the module list is an input too: a stamp that changes when MODULES does regenerates the registry
+build/modules.stamp: FORCE
+	@mkdir -p build
+	@echo '$(MODULES)' | cmp -s - $@ || echo '$(MODULES)' > $@
+FORCE:
+$(GEN)/vlr_modules.c: modules.conf build/mkmodules build/modules.stamp
 	@mkdir -p $(GEN)
 	build/mkmodules modules.conf $(MODULES) > $@
 $(GEN)/%.c: lua/%.lua build/embed

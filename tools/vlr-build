@@ -19,6 +19,6 @@ done
 set -- TARGET="$target" MODULES="$modules"
 [ -n "$ext" ] && set -- "$@" EXT="$ext"
 [ -n "$out" ] && set -- "$@" OUT="$out"
-# modules change the generated registry and the sources: rebuild from scratch so a stale object never survives
-rm -rf "build/$target" build/vlr_modules.c
+# a different module set links different objects: start the target from scratch
+rm -rf "build/$target"
 exec make -s "$@"
