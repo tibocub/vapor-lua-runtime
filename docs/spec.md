@@ -1,14 +1,52 @@
 # vlr: portable Lua runtime (vapor lua runtime)
 
-Status: **draft spec, nothing built.** Started 2026-11-19. Extracts and generalises `vlua` (vaporOS/vlua), which
-already has the static module registry (`vlua_libs.c`), Lua 5.4.8, 64-bit numbers and the `vapor.<cat>.<action>`
-naming (vaporOS/docs/vapor-api.md, lua-runtime.md). Those decisions are kept, not re-opened.
+Status (2026-11-21): **working runtime, version 0.1.** Runs the same conformance suite on Linux, Windows (including a real
+Windows pseudo-console suite), the browser (WASM, Node and Firefox), the NuttX simulator and the RP2040. Started 2026-11-19; extends
+and replaces `vlua` (vaporOS/vlua, which was a draft). Sections below that describe design are still the intent; the per-target
+sections at the end record what was measured. Direction and decisions: "Vision and decisions" right below.
 
-## Goal
+## Vision and decisions
 
-One Lua program, same behaviour on NuttX (RP2040 first), Linux/macOS/Windows, Android/iOS and the browser (WASM),
-and embeddable (HyperBrowser). Compatible with the LuaRocks ecosystem (pure Lua; C rocks are compiled in).
-No libuv (we need to find a lighter async alternative), no JIT, no dynamic linking.
+**What it is.** A lightweight, portable Lua runtime: a middle ground between uxn and the JVM, a lightweight Luvit. For programmers who
+want portable software and a generalist language (Python/Node use cases) without hundreds of MB of RAM. Design tests: Portable,
+Lightweight, Modern, Modular, Generalist. Example target: a vim-like editor on vaporUI that runs unchanged in a terminal, a desktop
+window and the browser. vlr is to Lua and LuaRocks what [Bare](https://github.com/holepunchto/bare) is to JavaScript and Node: a small
+core with optional modules.
+
+**Decided (2026-11-21, design interview):**
+
+1. **Core vs modules.** Core: Lua, the scheduler, the event queue, timers, the console. `vapor.fs`, `vapor.net`, `vapor.gfx`, workers and
+   the `std` helpers are optional modules, each with its backend part and the targets it supports. The global `vapor` is a lazy facade
+   that loads a module on first access; `require("vapor.fs")` also works.
+2. `vapor.*` stays minimal: only what plain Lua cannot do. `std.*` is optional pure-Lua batteries that a small build leaves out.
+3. **Ecosystem.** C Lua libraries (5.1 to 5.4 API) compile in without source changes. `vlr-build` reads LuaRocks rockspecs to add
+   native modules (`modules.conf` becomes the generated lock). The real `luarocks` should run on desktop vlr; vpm stays the preferred CLI
+   and the on-device tool.
+4. **Apps** are loose scripts plus a manifest (name, version, needed `vapor.caps`, needed built-in modules, entry point). No single-file
+   bundle format yet.
+5. **Parallelism.** One primitive: an optional `vapor.worker(file)` (isolated Lua state, own scheduler, copied-value messages; pthread,
+   Windows thread, Web Worker), plus subprocess spawn with pipes on desktops. No shared-memory threads. Reported in `vapor.caps`.
+6. **UI.** vaporUI keeps one cell-grid model with output surfaces: terminal, framebuffer cell-renderer (SDL window, `/dev/fb`, web
+   canvas), shared bitmap font. `vapor.gfx` is a separate low-level pixel surface, only when a program needs it. Image and video
+   rendering in the terminal (ASCII, half-blocks, Sixel/Kitty) is a later optional module.
+7. **Security.** The default is trusted, like Node. A tiered security milestone is studied and planned when we reach it (text-only
+   `load` by default, memory and instruction limits, an opt-in sandbox, manifest-declared capabilities, TLS verification). Hostile code
+   needs a separate process or the WASM build; the docs will say so.
+8. **API stability.** Version 0.2 freezes the core names (`pull`, `sleep`, `wait_fd`, `step`, `input`, `fs`, `caps`, `version`,
+   `builtin`, `platform`) after the module split. New areas start experimental and graduate after real use. Semantic versioning on
+   `vapor.version`. The 5.1-compatible dialect stays the default for the life of the project; plain 5.4 is opt-in.
+9. **Targets.** Done: Linux, Windows, WASM, NuttX sim, RP2040. Next: macOS through CI. No native Android or iOS: mobile goes through
+   HyperBrowser if the WASM build performs well. Embedding in HyperBrowser waits for WASM performance numbers.
+10. **vlua** is replaced by vlr in vaporOS once vlr is no heavier on the RP2040 than vlua.
+
+**Milestones from here:** M1 housekeeping (this spec, `docs/api.md`, CI, RP2040 heap gap); M2 module system and 0.2 freeze; M3 networking
+as the first real module; M4 vaporUI framebuffer renderer; M5 workers, then running `luarocks`. Parked: security tier, terminal images,
+`.vlb` bytecode, LuaJIT, single-file bundles. The detailed plan lives with the project owner's notes and is mirrored in the repo history.
+
+## Goal (original, kept for the record)
+
+One Lua program, same behaviour on NuttX (RP2040 first), Linux/macOS/Windows and the browser (WASM), compatible with the LuaRocks
+ecosystem (pure Lua; C rocks are compiled in). No libuv, no mandatory JIT, no mandatory dynamic linking.
 
 ## Layers
 
@@ -150,23 +188,14 @@ WASM modules not viable on 187 KB RAM (64 KiB pages), possible on ESP32-S3 with 
 `tests/` is Lua, runs unchanged on every target, and tests the `vapor.*` contract (events, timers, fs, caps, limits),
 not only Lua. A target is "supported" when it passes. Known per-target skips are listed in the test, not hidden.
 
-## Targets and first backend
+## Targets and backends
 
-| target | backend | order |
+| target | backend | state |
 |---|---|---|
-| Linux (and Mac/BSD) | posix | 1: fastest feedback, runs the suite |
-| browser | wasm (emscripten, no Asyncify) | 2: proves the event model |
-| NuttX sim, RP2040 | nuttx (existing vlua code) | 3 |
-| Windows | win32 | 4 |
-| Android/iOS | sdl (static lib in the app) | 5 |
-
-## Milestones
-
-1. This spec + `vlr_platform.h` header only.
-2. Core + posix backend + 10 conformance tests (`pull`, timers, `sleep`, fs list, caps).
-3. Same suite under emscripten + Node.
-4. Port vlua's NuttX parts onto it; keep vlua working until the suite passes on the board.
-5. Modules registry generator; lfs, lpeg, cjson.
+| Linux, macOS, BSD | `platform_posix.c` | Linux done; macOS/BSD untested (CI next) |
+| Windows | `platform_win32.c` | done, real-console suite in `tests/win32` |
+| browser, Node | `platform_wasm.c` (+ posix parts) | done, no Asyncify |
+| NuttX sim, RP2040 | `platform_posix.c` (NuttX is POSIX) | done |
 
 ## Open questions
 
