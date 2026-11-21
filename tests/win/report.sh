@@ -30,7 +30,8 @@ main() {
   [ -d ../lpeg-1.1.0 ] || curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
   [ -d ../vaporUI ] && git -C ../vaporUI pull -q --ff-only # we track the latest vaporUI on purpose
   [ -d ../vaporUI ] || git clone -q --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
-  ls -d ../vaporUI ../luafilesystem ../lua-cjson ../lpeg-1.1.0
+  [ -d ../Monocypher ] || { git clone -q https://github.com/LoupVaillant/Monocypher ../Monocypher && git -C ../Monocypher checkout -q ab2b16dd619ad5f6979a4fbe69cfa324a6fcc35f; }
+  ls -d ../Monocypher ../vaporUI ../luafilesystem ../lua-cjson ../lpeg-1.1.0
 
   step "build vlr.exe" make TARGET=win32 CC=gcc
   [ -f vlr.exe ] || { echo "ABORT: no vlr.exe, the build failed (see above)"; return 1; }
