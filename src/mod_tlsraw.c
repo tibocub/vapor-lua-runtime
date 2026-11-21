@@ -61,7 +61,7 @@ static void free_anchor(br_x509_trust_anchor *ta)
     else if (ta->pkey.key_type == BR_KEYTYPE_EC) free(ta->pkey.key.ec.q);
 }
 
-static void *dup(const void *p, size_t n)
+static void *blobdup(const void *p, size_t n)
 {
     void *q = malloc(n ? n : 1);
 
@@ -87,13 +87,13 @@ static int add_cert(anchors *a, const unsigned char *der, size_t len)
     ta.flags = br_x509_decoder_isCA(&dc) ? BR_X509_TA_CA : 0;
     ta.pkey.key_type = pk->key_type;
     if (pk->key_type == BR_KEYTYPE_RSA) {
-        ta.pkey.key.rsa.n = dup(pk->key.rsa.n, pk->key.rsa.nlen);
+        ta.pkey.key.rsa.n = blobdup(pk->key.rsa.n, pk->key.rsa.nlen);
         ta.pkey.key.rsa.nlen = pk->key.rsa.nlen;
-        ta.pkey.key.rsa.e = dup(pk->key.rsa.e, pk->key.rsa.elen);
+        ta.pkey.key.rsa.e = blobdup(pk->key.rsa.e, pk->key.rsa.elen);
         ta.pkey.key.rsa.elen = pk->key.rsa.elen;
     } else {
         ta.pkey.key.ec.curve = pk->key.ec.curve;
-        ta.pkey.key.ec.q = dup(pk->key.ec.q, pk->key.ec.qlen);
+        ta.pkey.key.ec.q = blobdup(pk->key.ec.q, pk->key.ec.qlen);
         ta.pkey.key.ec.qlen = pk->key.ec.qlen;
     }
     if (a->n == a->cap) {
