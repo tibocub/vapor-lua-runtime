@@ -276,7 +276,7 @@ events yet (that is the next milestone), no wterm yet (plain `<pre>`).
 `vapor.input(true | {mouse = 0|1|2})` puts the console in raw mode and delivers `vapor.pull` events: `char, text`;
 `key, name, mods` (1 shift, 2 alt, 4 ctrl); `mouse, action, button, x, y, mods` (press, release, drag, move, scroll_up/down; 1-based);
 `resize, cols, rows`; `quit` at end of input. `vapor.input(false)` (or exit, via a gc guard) restores the terminal.
-Bytes are decoded by `src/vtinput.c` (pure C: UTF-8, CSI/SS3 keys with modifiers, Shift+Tab, Alt+key, SGR mouse, split sequences,
+Bytes are decoded by vaporUI's decoder (`../vaporUI/src/input.c`, vt.c, utf8.c, scancode.c; a sibling checkout like lfs, tracking its latest version on purpose; replaced `src/vtinput.c`; adds kitty, modifyOtherKeys, bracketed paste, base/scancode; +24 KB on the host build, matters for RP2040). The old description (pure C: UTF-8, CSI/SS3 keys with modifiers, Shift+Tab, Alt+key, SGR mouse, split sequences,
 lone-ESC after 25 ms). The platform adds `vlr_console_read/raw/size`. Windows uses VT input mode (same decoder).
 Web: the page pushes the same events via `vlr.event(...)` / `attachEvents(el, vlr, cell)` in `web/vlr-glue.js`.
 The playground (`web/index.html`) makes the output pane the console: click it to focus, then keys, mouse, wheel and pane resizes reach the script ("Events demo" button). The wheel goes to the script only while the pane has focus.

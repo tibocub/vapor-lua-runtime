@@ -37,7 +37,7 @@ All functions live on the global `vapor` table, which is a lazy facade: `vapor.f
 | call | | meaning |
 |---|---|---|
 | `vapor.input(true \| {mouse=0\|1\|2})` | stable | raw console; events arrive through `vapor.pull`. `mouse`: 0 none, 1 clicks and drags, 2 also motion. `vapor.input(false)` restores the console (also restored on exit) |
-| events | stable | `"char", text` · `"key", name, mods` (1 shift, 2 alt, 4 ctrl) · `"mouse", action, button, x, y, mods` (press, release, drag, move, scroll_up, scroll_down; 1-based) · `"resize", cols, rows` · `"quit"` when input ends |
+| events | stable | `"char", text` · `"key", name, mods, base, scancode` (mods: 1 shift, 2 alt, 4 ctrl, 8 meta; for characters `name` is the lowercase key and Shift is a flag, `base` is the same key on a US layout ("" for named keys), `scancode` the physical key in USB HID numbering, 0 if unknown; experimental: the last two) · `"paste", "start"|"end"` (bracketed paste; text between arrives as `char`) · `"mouse", action, button, x, y, mods` (press, release, drag, move, scroll_up, scroll_down; 1-based) · `"resize", cols, rows` · `"quit"` when input ends |
 | `vapor.size()` | stable | `cols, rows` of the console, or `nil` |
 | `require("vapor.term")` | internal | `console_read/raw/size` and `decode*`: the platform calls and byte decoder behind `input` (tested in `tests/decode.lua`) |
 | `vapor._after(ms, fn)`, `vapor._source(fd, fn)` | internal | loop hooks for optional modules |

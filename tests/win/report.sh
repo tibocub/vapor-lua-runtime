@@ -28,7 +28,9 @@ main() {
   [ -d ../luafilesystem ] || { git clone -q https://github.com/lunarmodules/luafilesystem ../luafilesystem && git -C ../luafilesystem checkout -q 146ab458e821cd7617892099fe8e6e399b46185c; }
   [ -d ../lua-cjson ] || { git clone -q https://github.com/mpx/lua-cjson ../lua-cjson && git -C ../lua-cjson checkout -q 718f27293a981fb5e9e662e9aec0b7cf78317da6; }
   [ -d ../lpeg-1.1.0 ] || curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
-  ls -d ../luafilesystem ../lua-cjson ../lpeg-1.1.0
+  [ -d ../vaporUI ] && git -C ../vaporUI pull -q --ff-only # we track the latest vaporUI on purpose
+  [ -d ../vaporUI ] || git clone -q --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
+  ls -d ../vaporUI ../luafilesystem ../lua-cjson ../lpeg-1.1.0
 
   step "build vlr.exe" make TARGET=win32 CC=gcc
   [ -f vlr.exe ] || { echo "ABORT: no vlr.exe, the build failed (see above)"; return 1; }
