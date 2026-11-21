@@ -50,10 +50,12 @@ CFLAGS  += -DVLR_DLOPEN=1
 endif
 endif
 
-SRCS     = $(LUASRC) $(VLR_CORE_SRC) $(VLR_MAIN_SRC) $(PLATSRC) $(MODSRC) \
+SRCS     = $(LUASRC) $(VLR_CORE_SRC) $(VLR_MAIN_SRC) $(PLATSRC) \
            $(addprefix $(GEN)/,$(addsuffix .c,$(VLR_LUA_EMBED))) $(GEN)/vlr_modules.c
-OBJ      = $(addprefix $(OBJDIR)/,$(notdir $(SRCS:.c=.o)))
-VPATH    = src third_party/lua $(sort $(dir $(MODSRC)))
+# module sources get object names from their whole path: two modules may both have a util.c (or a lutf8lib.c like Lua's own)
+MODOBJ   = $(foreach s,$(MODSRC),$(OBJDIR)/m_$(subst /,_,$(s:.c=.o)))
+OBJ      = $(addprefix $(OBJDIR)/,$(notdir $(SRCS:.c=.o))) $(MODOBJ)
+VPATH    = src third_party/lua
 
 OUT     ?= vlr$(EXE)
 
@@ -73,7 +75,12 @@ $(OBJDIR)/%.o: $(GEN)/%.c
 
 $(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF) -include vlr_lua.h
 # third-party module sources are built as their authors expect (no -std, warnings off); our own (./...) keep the strict flags
-$(addprefix $(OBJDIR)/,$(notdir $(filter-out ./%,$(MODSRC:.c=.o)))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
+define modrule
+$(OBJDIR)/m_$(subst /,_,$(1:.c=.o)): $(1)
+	@mkdir -p $(OBJDIR)
+	$(CC) $(if $(filter ./%,$(1)),$(CFLAGS),$(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w) $(MODFLAGS) -c -o $$@ $$<
+endef
+$(foreach s,$(MODSRC),$(eval $(call modrule,$(s))))
 $(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
 ifneq ($(filter wasm web,$(TARGET)),)
 $(OBJDIR)/platform_posix.o: CFLAGS += -DVLR_POSIX_NO_WAIT

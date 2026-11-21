@@ -326,6 +326,12 @@ Heap at start of a script (host, same one-line script): 46.1 KB before the split
 Still to do for 0.2: app manifest check, rockspec reading in `vlr-build`, the 5.1 C-API shims test with more real rocks.
 
 `tools/vlr-build add-rock ROCKSPEC SRCDIR [--write]` turns a builtin-type rockspec into `modules.conf` lines (`tools/rock2conf.lua`, run by vlr itself):
-`sources`, `defines`, `incdirs` and `luaopen_` names (dots to underscores, hyphen suffix dropped) for C modules, `name lua:file` for Lua files. Rocks with
+`sources`, `defines`, `incdirs` and `luaopen_` names (dots to underscores, everything up to the last hyphen dropped, as LuaRocks does) for C modules, `name lua:file` for Lua files. Rocks with
 other build types or external `libraries` are refused. Verified: the lfs and lua-cjson rockspecs reproduce their existing `modules.conf` lines exactly
 (`tests/rock` pins the rules). Lua-file modules may use `@EXT@` too (`VLR_EXT`, set by the Makefile from `EXT`).
+
+**C rocks unmodified (2026-11-21).** Beyond lfs, lpeg and cjson, two more third-party rocks compiled into vlr from their own rockspec and sources, no edits, and
+passed a round-trip script: `lua-cmsgpack` (a 5.1-era single file) and `luautf8` (module `lua-utf8`). Finding: luautf8's `luaopen_utf8` is also Lua 5.4's own
+utf8 library symbol and its file is called `lutf8lib.c` like Lua's. Fixed in the build, not in the rock: module objects are named from their whole path
+(`build/<target>/m_<path>.o`), and `rock2conf` renames a clashing `luaopen_` symbol with `-Dluaopen_utf8=luaopen_rock_<name>`. These two are not in `modules.conf`
+(default builds must not need checkouts nobody has); `vlr-build add-rock` adds them where wanted.
