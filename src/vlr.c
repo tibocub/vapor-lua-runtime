@@ -1,5 +1,9 @@
 /* vlr core: the `vapor` table over the platform interface. No OS headers here. */
 #include <stdio.h>
+#if defined(VLR_HOSTLIBDIR) && defined(__NuttX__)
+#include <sys/mount.h>
+#include <sys/stat.h>
+#endif
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,6 +201,18 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
     lua_pop(L, 1);
     vlr_modules_open(L);
     vlr_dotzero = !dialect51;
+#if defined(VLR_LIBDIR) && defined(VLR_HOSTLIBDIR) && defined(__NuttX__)
+    { /* simulator: no persistent storage, so a host directory is mounted as the library folder (hostfs) unless it exists */
+        struct stat st;
+        char path[] = VLR_LIBDIR, *p;
+
+        if (stat(path, &st) != 0) {
+            for (p = path + 1; (p = strchr(p, '/')) != NULL; *p++ = '/') { *p = '\0'; mkdir(path, 0755); }
+            mkdir(path, 0755);
+            mount("", path, "hostfs", 0, "fs=" VLR_HOSTLIBDIR);
+        }
+    }
+#endif
 #ifdef VLR_LIBDIR /* the target's library folder (vaporOS: /flash/lib), searched before the default path */
     lua_getglobal(L, "package");
     lua_pushliteral(L, VLR_LIBDIR "/?.lua;" VLR_LIBDIR "/?/init.lua;");
