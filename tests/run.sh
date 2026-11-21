@@ -8,6 +8,7 @@ if [ -z "$VLR" ]; then
 fi
 fail=0
 for t in tests/*.lua; do
+  [ "$t" = tests/keys.lua ] && continue # interactive diagnostic (waits for q), run by hand: docs/tty-test.md
   opt=
   head -n1 "$t" | grep -q '^--! dialect 5.4' && opt=--dialect=5.4
   for mode in "" --step; do
