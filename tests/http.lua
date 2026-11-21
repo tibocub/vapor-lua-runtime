@@ -14,11 +14,12 @@ local routes = {
   ["/loop"] = function(c) c:write("HTTP/1.1 302 Found\r\nLocation: /loop\r\nContent-Length: 0\r\n\r\n") end,
   ["/short"] = function(c) c:write("HTTP/1.1 200 OK\r\nContent-Length: 50\r\n\r\nonly a little") end,
 }
-local last_post
+local last_post, done
 vapor.spawn(function()
   while true do
-    local c = srv:accept()
-    if not c then return end
+    local c = srv:accept(0.2) -- a timeout, so the task can end when the test is over (closing a socket someone waits on hangs on Windows)
+    if done then return end
+    if not c then goto next end
     local req = c:read("l")
     local method, path = req:match("^(%u+) (%S+)")
     local len = 0
@@ -34,6 +35,7 @@ vapor.spawn(function()
       (routes[path] or routes["/missing"])(c)
     end
     c:close()
+    ::next::
   end
 end)
 
@@ -52,5 +54,7 @@ assert(n == 200000 and s.body == nil)
 local _, e1 = http.get(base .. "/loop", {redirects = 3}); assert(e1 and e1:find("redirects"), tostring(e1))
 local _, e2 = http.get(base .. "/short", {timeout = 2}); assert(e2, "a short body is an error")
 local _, e3 = http.get("ftp://x/"); assert(e3)
+done = true
+vapor.sleep(0.5)
 srv:close()
 print("ok")
