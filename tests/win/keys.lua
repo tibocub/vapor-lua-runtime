@@ -7,7 +7,7 @@ local logname = arg[2] or "reports/keys-last.txt"
 local log = io.open(logname, "w")
 local function out(s) io.stdout:write(s, "\r\n"); io.stdout:flush(); if log then log:write(s, "\n"); log:flush() end end
 
-out("keys: raw bytes -> decoded events. platform=" .. vapor.platform .. " mouse=" .. mouse .. "  (q quits)")
+out("keys: platform=" .. vapor.platform .. " native=" .. tostring(term.native()) .. " mouse level=" .. mouse .. " (hover needs 2)  (q quits)")
 vapor.input({mouse = mouse}) -- sets raw mode and the mouse reporting; we read the bytes ourselves below
 vapor._source(0, nil)        -- ...so take the console back from the event pump (a key that produces no event prints nothing at all)
 local d = require("vapor.term")
