@@ -78,7 +78,7 @@ const char *vlr_net_error_text(void);
  * a terminal (wasm) have no console bytes: the page pushes events directly. vlr_console_size gives columns and rows.
  */
 int vlr_console_read(char *buf, int n);
-int vlr_console_raw(int enable);
+int vlr_console_raw(int enable); /* 0 restore, 1 raw, 2 raw with mouse (Windows turns quick-edit off for it; elsewhere same as 1) */
 int vlr_console_size(int *cols, int *rows);
 
 /*

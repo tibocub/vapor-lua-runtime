@@ -46,3 +46,35 @@ Then reply with: the report file name, the `SUMMARY` line, and the full text of 
 - Found and fixed earlier on real Windows: a console resize left a record that made `vlr_wait` report "readable" while `ReadFile` blocked; `print("é")` showed
   mojibake on a console (output code page is now UTF-8 for the process).
 - Known open: with a console and a socket waited on together, polling is in 10 ms slices (sockets alone wait exactly).
+
+---
+
+# Round 2: keyboard and mouse diagnostics (needs a human at the keyboard)
+
+Background: in the first report everything automated passed, but by hand in real windows: mouse hover was never reported, drag only worked in Ghostty
+(not in cmd or PowerShell), Ctrl+key combinations did nothing, and multi-modifier combos felt clunky. Changes made for it (rebuild first: `git pull`, then
+`sh tests/win/report.sh` or just `make TARGET=win32 CC=gcc`):
+- Hover needs mouse level 2 (`events.lua` used level 1, drag only). `tests/pty/events.lua` now takes the level as its argument.
+- On Windows a console in quick-edit mode (the default) swallows clicks and drags for text selection. Mouse level 2 now turns quick-edit off and enables mouse input.
+- A modifier key pressed alone (Shift, Ctrl, Alt) is no longer treated as "input is ready" (it made the program wait inside ReadFile and feel laggy).
+
+Run the diagnostic **once in each terminal you have** (Windows Terminal with PowerShell, Windows Terminal with cmd, classic cmd.exe window, classic PowerShell
+window, Ghostty). In the MinGW64 shell or directly in that terminal from the repo folder:
+
+    ./vlr.exe tests/win/keys.lua 2 reports/keys-<terminal-name>.txt
+
+(`<terminal-name>` e.g. `wt-powershell`, `cmd`, `ghostty`.) Each key press prints the raw bytes received and how vlr decoded them, and is saved to the file.
+Press these one at a time, waiting for the line to appear, then `q` to quit:
+
+1. `a`, `Shift+a`, `Alt+a`, `Ctrl+a`, `Ctrl+b`, `Ctrl+z`
+2. `Left`, `Shift+Left`, `Alt+Left`, `Ctrl+Left`, `Ctrl+Shift+Left`, `Ctrl+Alt+Left`
+3. `Home`, `Ctrl+Home`, `Delete`, `Ctrl+Delete`, `Backspace`, `Ctrl+Backspace`, `Tab`, `Shift+Tab`, `Ctrl+Enter`
+4. `F5`, `Shift+F5`, `Ctrl+F5`
+5. Mouse: move over the window without clicking (hover), left click, right click, hold and drag, scroll wheel up and down.
+
+Note for each terminal whether a key produced **no line at all** (the terminal or Windows ate it) or a line with `(no event)` (bytes arrived but vlr does not
+decode them; send me those bytes). Then:
+
+    git add reports && git commit -m "Windows key diagnostics" && git push
+
+and reply with which terminals you ran and anything odd (lag, a frozen window, characters echoed on screen).

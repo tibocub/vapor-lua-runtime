@@ -5,7 +5,7 @@
 -- While on, the console belongs to the events: do not also read it with io.read / vapor.wait_fd(0).
 local vapor = vapor
 local term = require("vapor.term")
-local on, lastc, lastr, guard
+local on, lastc, lastr, guard, rawlevel
 
 local function feed(list) for _, e in ipairs(list) do vapor.push(table.unpack(e)) end end
 
@@ -33,8 +33,11 @@ end
 function input(opts)
   if opts then
     local mouse = type(opts) == "table" and opts.mouse or 0
+    local level = mouse > 0 and 2 or 1
+    if on and level ~= rawlevel then term.console_raw(level); rawlevel = level end
     if not on then
-      term.console_raw(true)
+      term.console_raw(level)
+      rawlevel = level
       guard = setmetatable({}, {__gc = function() input(false) end}) -- restore the console even on os.exit
       on = true
       lastc, lastr = term.console_size()

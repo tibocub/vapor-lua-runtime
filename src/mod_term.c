@@ -90,7 +90,8 @@ static int l_console_read(lua_State *L)
 
 static int l_console_raw(lua_State *L)
 {
-    lua_pushboolean(L, vlr_console_raw(lua_toboolean(L, 1)) == 0);
+    /* true/false, or 0/1/2 (2 = with mouse) */
+    lua_pushboolean(L, vlr_console_raw(lua_isboolean(L, 1) ? lua_toboolean(L, 1) : (int)luaL_checkinteger(L, 1)) == 0);
     return 1;
 }
 

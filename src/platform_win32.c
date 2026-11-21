@@ -64,7 +64,14 @@ static int stdin_ready(void)
         INPUT_RECORD r;
 
         while (PeekConsoleInputW(h, &r, 1, &avail) && avail) {
-            if (r.EventType == KEY_EVENT && r.Event.KeyEvent.bKeyDown) return 1;
+            if (r.EventType == KEY_EVENT && r.Event.KeyEvent.bKeyDown) {
+                WORD vk = r.Event.KeyEvent.wVirtualKeyCode;
+
+                /* a modifier alone (Shift, Ctrl, Alt, Caps, Win...) produces no bytes: ReadFile would sit waiting for the next key,
+                   freezing timers and resize; drop it like the other non-data records */
+                if (!(vk == VK_SHIFT || vk == VK_CONTROL || vk == VK_MENU || vk == VK_CAPITAL || vk == VK_NUMLOCK ||
+                      vk == VK_SCROLL || vk == VK_LWIN || vk == VK_RWIN)) return 1;
+            }
             ReadConsoleInputW(h, &r, 1, &avail);
         }
         return 0;
@@ -152,20 +159,27 @@ int vlr_fs_mkdir(const char *path)
 static DWORD g_inmode, g_outmode;
 static int g_raw;
 
+/* enable: 0 restore, 1 raw VT input, 2 raw VT input with mouse. Mouse needs ENABLE_MOUSE_INPUT and quick-edit OFF: with quick-edit
+   (the console default, left unchanged unless ENABLE_EXTENDED_FLAGS is given) clicks and drags select text and never reach the program. */
 int vlr_console_raw(int enable)
 {
     HANDLE in = GetStdHandle(STD_INPUT_HANDLE), out = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    if (enable && !g_raw) {
-        if (!GetConsoleMode(in, &g_inmode)) return -1;
-        GetConsoleMode(out, &g_outmode);
+    if (enable) {
         /* VT input: keys arrive as the same escape sequences as on a terminal, decoded by vtinput */
-        SetConsoleMode(in, ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT);
-        SetConsoleMode(out, g_outmode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-        SetConsoleCP(CP_UTF8);
-        SetConsoleOutputCP(CP_UTF8);
-        g_raw = 1;
-    } else if (!enable && g_raw) {
+        DWORD mode = ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT;
+
+        if (!g_raw) {
+            if (!GetConsoleMode(in, &g_inmode)) return -1;
+            GetConsoleMode(out, &g_outmode);
+            SetConsoleMode(out, g_outmode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+            SetConsoleCP(CP_UTF8);
+            SetConsoleOutputCP(CP_UTF8);
+            g_raw = 1;
+        }
+        if (enable >= 2) mode |= ENABLE_EXTENDED_FLAGS | ENABLE_MOUSE_INPUT; /* no ENABLE_QUICK_EDIT_MODE: switches it off */
+        SetConsoleMode(in, mode);
+    } else if (g_raw) {
         SetConsoleMode(in, g_inmode);
         SetConsoleMode(out, g_outmode);
         g_raw = 0;
