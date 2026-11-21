@@ -49,3 +49,14 @@ socket, so waiting stays in the scheduler. Another backend (mbedTLS on NuttX, Op
 `anchors/client/state/take/put/send/recv/flush/close/error` calls. A peer closing the transport without `close_notify` reads as end of data.
 Tests: `tests/tls/run.sh` (local `openssl s_server` with a good certificate, a wrong-name one and an untrusted one); a manual check against
 `example.com`, `expired.badssl.com` and `wrong.host.badssl.com` passes. Costs about 390 KB of code on the host: the module is optional (profiles).
+
+## HTTP client (`std.http`, optional pure Lua)
+
+    local http = require("std.http")
+    local r = http.get("https://example.com/")            -- r.status, r.headers (lower-case), r.body, r.url (after redirects)
+    http.post(url, "a=1&b=2", {headers = {["Content-Type"] = "application/x-www-form-urlencoded"}})
+    http.get(url, {sink = function(chunk) file:write(chunk) end})   -- streamed download, r.body is nil
+    http.request{url = ..., method = "PUT", headers = {...}, body = "...", timeout = 30, redirects = 5, ca = ..., cafile = ...}
+
+Content-Length, chunked and read-until-close bodies; redirects 301/302/303/307/308 (POST becomes GET on 301-303); https through `vapor.tls` (always verified).
+One request per connection. Not done (shortcut): compressed bodies, proxies, cookies, keep-alive. Test: `tests/http.lua` (a server in the same process).
