@@ -24,3 +24,8 @@ Not vlr's to fix (the index should say so instead):
 - The builder knows `requires` per rock: `ffi`/`ngx`/`vim` etc. should reject or tag at index time.
 
 Failing outcomes are kept as data, not hidden: the libtest results (one line per module) are the input for deciding what the index accepts.
+
+## After the fixes (2026-11-22, same day)
+vpm now retries transient download failures, tags host-specific rocks (hidden unless the config allows the host) and serves archive-origin files as blobs next to the index.
+Re-running the 231 rocks that could not install before: all install; 4,906 of 5,040 modules load in 5.1 (4,892 in 5.4) and 164 of the 231 packages (71%) load every module.
+What is left there is dependencies the index does not have (`luv`, `luaunit`, `panto`, `re`, ...) and framework globals. Index: 1,272 packages, 123 tagged for a host, 141 MB of blobs.
