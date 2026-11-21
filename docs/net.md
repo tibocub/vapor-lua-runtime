@@ -64,3 +64,10 @@ One request per connection. Not done (shortcut): compressed bodies, proxies, coo
 ## Closing a handle someone waits on
 `vapor.close_fd(handle)` (called by every `close` in `vapor.net`) wakes the tasks waiting on that handle with `nil, "closed"`. Without it a task blocked in
 `accept`/`read` on a socket another task closes would never wake on Windows (a closed socket in a WSAPoll set stays silent). `tests/net.lua` covers it.
+
+## LuaSocket compatibility (`socket`, also `std.socket`)
+A LuaSocket-compatible subset over `vapor.net`, so pure-Lua rocks written for luasocket run unmodified: `socket.tcp()` (connect, bind/listen/accept, send, receive with
+`*l`/`*L`/`*a`/count and a prefix, settimeout, getpeername/getsockname, close), `socket.bind`, `socket.udp()` (sendto, receivefrom, setpeername), `socket.select`,
+`socket.gettime/sleep`, `socket.try/newtry/protect/skip`, `socket.dns` (stubs). Timeouts and errors use luasocket's strings (`"timeout"`, `"closed"`) and a receive timeout returns the
+partial data as third result. Shortcuts: `select` polls every 5 ms; `dns.toip` does not resolve; luasocket's helper modules (url, ltn12, mime, http, smtp, ftp) are separate rocks.
+Test: `tests/socket.lua`. Run it inside a coroutine-aware task: like all of vapor.net it needs the scheduler (the main script is one).
