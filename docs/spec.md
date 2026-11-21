@@ -261,4 +261,4 @@ Image rebuilt with vtinput, `vapor.input` and `VLR_STRIP_INTERNAL=1`; flashed. `
 (with `--dialect=5.4`) pass on the board. Strip confirmed active (`debug.getinfo(vapor.sleep, "L")` has 0 active lines vs 5 unstripped).
 Real console path over USB CDC: `vapor.input(true)` received a char, an Up arrow and an SGR mouse press typed from the host
 (`EV char,a / key,up,0 / mouse,press,1,5,6,0`). Lua heap at start of a script: 31.8 KB (before/after the strip not measured on the board;
-host: 40.5 -> 37.0 KB). Not run on the board: `fs`, `fd`, `exec`, `exec54`, lfs suite after this change.
+host: 40.5 -> 37.0 KB). Also passing on the board afterwards: `fs` (from /flash), `exec`, `exec54`, `modules`, `fd` (needs `< /dev/null`: a console is never readable), and lfs's own suite (`Ok!`, needs `/tmp`: `mkdir /tmp` first). The stale corrupted `/flash/t` entry is gone.
