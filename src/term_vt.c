@@ -6,7 +6,7 @@
    Ported from vaporUI's src/platform/posix.c (the reference). shortcut: no CapsLock/NumLock LEDs, no compose key. */
 #include "term_vt.h"
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__NuttX__) /* the NuttX simulator is built with the host compiler and defines __linux__ */
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
