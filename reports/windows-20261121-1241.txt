@@ -1,0 +1,74 @@
+vlr Windows report Sat, Nov 21, 2026 12:41:37 PM
+commit: feeb4b1 (Do not track keys-last.txt)
+system: MINGW64_NT-10.0-19045 PCTIBO 3.6.10-9a6cbe55.x86_64 2026-07-16 20:47 UTC x86_64 Msys
+shell: MINGW64  gcc: gcc.exe (Rev8, Built by MSYS2 project) 15.2.0  make: GNU Make 4.4.1
+Host key verification failed.
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+../lpeg-1.1.0
+../lua-cjson
+../luafilesystem
+../vaporUI
+
+== build vlr.exe
+gcc -O2 -std=c99 -Wall -Iinclude -Ithird_party/lua -c -o build/win32/platform_win32.o src/platform_win32.c
+VLR_EXT=.. build/mkmodules modules.conf  > build/vlr_modules.c
+gcc -O2 -std=c99 -Wall -Iinclude -Ithird_party/lua -c -o build/win32/vlr_modules.o build/vlr_modules.c
+gcc -O2 -std=c99 -Wall -Iinclude -Ithird_party/lua -I../vaporUI/src -c -o build/win32/m_._src_mod_term.o src/mod_term.c
+gcc -O2 -Wall -Iinclude -Ithird_party/lua -D_GNU_SOURCE -w -I../vaporUI/src -c -o build/win32/m_.._vaporUI_src_input.o ../vaporUI/src/input.c
+gcc -O2 -Wall -Iinclude -Ithird_party/lua -D_GNU_SOURCE -w -I../vaporUI/src -c -o build/win32/m_.._vaporUI_src_vt.o ../vaporUI/src/vt.c
+gcc -O2 -Wall -Iinclude -Ithird_party/lua -D_GNU_SOURCE -w -I../vaporUI/src -c -o build/win32/m_.._vaporUI_src_utf8.o ../vaporUI/src/utf8.c
+gcc -O2 -Wall -Iinclude -Ithird_party/lua -D_GNU_SOURCE -w -I../vaporUI/src -c -o build/win32/m_.._vaporUI_src_scancode.o ../vaporUI/src/scancode.c
+gcc -O2 -Wall -Iinclude -Ithird_party/lua -D_GNU_SOURCE -w -I../vaporUI/src -c -o build/win32/m_.._vaporUI_src_winkeys.o ../vaporUI/src/winkeys.c
+gcc  -o vlr.exe build/win32/lapi.o build/win32/lauxlib.o build/win32/lbaselib.o build/win32/lcode.o build/win32/lcorolib.o build/win32/lctype.o build/win32/ldblib.o build/win32/ldebug.o build/win32/ldo.o build/win32/ldump.o build/win32/lfunc.o build/win32/lgc.o build/win32/linit.o build/win32/liolib.o build/win32/llex.o build/win32/lmathlib.o build/win32/lmem.o build/win32/loadlib.o build/win32/lobject.o build/win32/lopcodes.o build/win32/loslib.o build/win32/lparser.o build/win32/lstate.o build/win32/lstring.o build/win32/lstrlib.o build/win32/ltable.o build/win32/ltablib.o build/win32/ltm.o build/win32/lundump.o build/win32/lutf8lib.o build/win32/lvm.o build/win32/lzio.o build/win32/vlr.o build/win32/main.o build/win32/platform_win32.o build/win32/compat.o build/win32/sched.o build/win32/vlr_modules.o build/win32/m_._src_mod_fs.o build/win32/m_._src_mod_term.o build/win32/m_.._vaporUI_src_input.o build/win32/m_.._vaporUI_src_vt.o build/win32/m_.._vaporUI_src_utf8.o build/win32/m_.._vaporUI_src_scancode.o build/win32/m_.._vaporUI_src_winkeys.o build/win32/m_._src_mod_netraw.o build/win32/m_._src_net_win32.o build/win32/m_.._luafilesystem_src_lfs.o build/win32/m_.._lpeg-1.1.0_lpcap.o build/win32/m_.._lpeg-1.1.0_lpcode.o build/win32/m_.._lpeg-1.1.0_lpcset.o build/win32/m_.._lpeg-1.1.0_lpprint.o build/win32/m_.._lpeg-1.1.0_lptree.o build/win32/m_.._lpeg-1.1.0_lpvm.o build/win32/m_.._lua-cjson_lua_cjson.o build/win32/m_.._lua-cjson_strbuf.o build/win32/m_.._lua-cjson_fpconv.o -static -lws2_32
+-- exit 0
+vlr.exe: identity ok
+
+== suite (tests/run.sh)
+ok   tests/compat51.lua 
+ok   tests/compat51.lua --step
+ok   tests/decode.lua 
+ok   tests/decode.lua --step
+ok   tests/dialect54.lua 
+ok   tests/dialect54.lua --step
+ok   tests/events.lua 
+ok   tests/events.lua --step
+ok   tests/exec.lua 
+ok   tests/exec.lua --step
+ok   tests/exec54.lua 
+ok   tests/exec54.lua --step
+ok   tests/fd.lua 
+ok   tests/fd.lua --step
+ok   tests/fs.lua 
+ok   tests/fs.lua --step
+ok   tests/identity.lua 
+ok   tests/identity.lua --step
+ok   tests/manifest.lua 
+ok   tests/manifest.lua --step
+ok   tests/modules.lua 
+ok   tests/modules.lua --step
+ok   tests/net.lua 
+ok   tests/net.lua --step
+ok   tests/record.lua 
+ok   tests/record.lua --step
+ok   tests/sched.lua 
+ok   tests/sched.lua --step
+ok   app folder
+ok   app refused
+ok   os.exit
+-- exit 0
+
+== ConPTY console suite
+ok   events (keys, escape, resize)
+SKIP mouse events through ConPTY (check by hand, docs/windows-test.md)
+ok   console restored (cooked read, echo)
+ok   stdin pipe
+ok   utf8 (console)
+ok   utf8 (pipe)
+ok   ctrl+c inside vapor.input
+ok   ctrl+c outside vapor.input ends the program
+-- exit 0
+
+SUMMARY: 0 failing step(s). Lines starting with FAIL above say which checks.
