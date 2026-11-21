@@ -12,6 +12,9 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud);
 /* loads path and starts it as the main task (not yet run). Returns 0, or 1 with a message on stderr */
 int vlr_spawn_file(lua_State *L, const char *path, int argc, char **argv);
 
+/* the same for a chunk of source text (vlr -e, the REPL) */
+int vlr_spawn_string(lua_State *L, const char *code, int argc, char **argv);
+
 /*
  * One scheduler turn for hosts that own the main loop: waits at most max_ms (-1 = until something is due).
  * Returns 1 if work remains (*next_ms = ms until the next timer, -1 if only waiting on input), 0 if everything is

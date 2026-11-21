@@ -38,4 +38,9 @@ printf 'setmetatable({}, {__gc = function() io.write("closed") end})\nos.exit(7)
 out=$($VLR "$f" </dev/null 2>/dev/null); rc=$?
 if [ "$rc" = 7 ] && [ "$out" = closed ]; then echo "ok   os.exit"; else echo "FAIL os.exit (rc=$rc out=$out)"; fail=1; fi
 rm -f "$f"
+# -e and the prompt (no script)
+out=$($VLR -e 'io.write(40 + 2)' </dev/null 2>&1)
+if [ "$out" = 42 ]; then echo "ok   -e"; else echo "FAIL -e (out=$out)"; fail=1; fi
+out=$(printf '6 * 7\n' | $VLR 2>&1 | tr -d '\r')
+case $out in *42*) echo "ok   prompt" ;; *) echo "FAIL prompt (out=$out)"; fail=1 ;; esac
 exit $fail

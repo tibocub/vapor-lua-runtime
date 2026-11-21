@@ -197,6 +197,14 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
     lua_pop(L, 1);
     vlr_modules_open(L);
     vlr_dotzero = !dialect51;
+#ifdef VLR_LIBDIR /* the target's library folder (vaporOS: /flash/lib), searched before the default path */
+    lua_getglobal(L, "package");
+    lua_pushliteral(L, VLR_LIBDIR "/?.lua;" VLR_LIBDIR "/?/init.lua;");
+    lua_getfield(L, -2, "path");
+    lua_concat(L, 2);
+    lua_setfield(L, -2, "path");
+    lua_pop(L, 1);
+#endif
 
     lua_newtable(L); /* vapor */
     lua_pushcfunction(L, l_now);
@@ -275,6 +283,35 @@ int vlr_spawn_file(lua_State *L, const char *path, int argc, char **argv)
     lua_insert(L, -2); /* spawn, fn */
     for (i = 0; i < argc; i++) lua_pushstring(L, argv[i]);
     if (lua_pcall(L, 1 + argc, 0, 0) != LUA_OK) {
+        fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 1;
+    }
+    return 0;
+}
+
+int vlr_spawn_string(lua_State *L, const char *code, int argc, char **argv)
+{
+    int i;
+
+    if (luaL_loadbuffer(L, code, strlen(code), "=(command line)") != LUA_OK) {
+        fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 1;
+    }
+    lua_newtable(L); /* arg: [0] is the program, like lua -e */
+    lua_pushliteral(L, "vlr");
+    lua_rawseti(L, -2, 0);
+    for (i = 0; i < argc; i++) {
+        lua_pushstring(L, argv[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    lua_setglobal(L, "arg");
+    lua_getglobal(L, "vapor");
+    lua_getfield(L, -1, "spawn");
+    lua_remove(L, -2);
+    lua_insert(L, -2);
+    if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
         fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
         lua_pop(L, 1);
         return 1;
