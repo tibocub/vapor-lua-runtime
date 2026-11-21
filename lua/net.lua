@@ -13,7 +13,7 @@ local function socket_ops(h)
     read = function(max) return raw.recv(h, max) end,
     write = function(data) return raw.send(h, data) end,
     wait = function(mode, timeout) return vapor.wait_fd(h, timeout, mode) end,
-    close = function() raw.close(h) end,
+    close = function() vapor.close_fd(h); raw.close(h) end,
   }
 end
 
@@ -51,7 +51,7 @@ function Server:accept(timeout)
 end
 
 function Server:port() local _, p = raw.name(self.handle); return p end
-function Server:close() raw.close(self.handle); return true end
+function Server:close() vapor.close_fd(self.handle); raw.close(self.handle); return true end
 
 local Udp = {}
 Udp.__index = Udp
@@ -83,6 +83,6 @@ function Udp:recvfrom(timeout)
 end
 
 function Udp:port() local _, p = raw.name(self.handle); return p end
-function Udp:close() raw.close(self.handle); return true end
+function Udp:close() vapor.close_fd(self.handle); raw.close(self.handle); return true end
 
 return M

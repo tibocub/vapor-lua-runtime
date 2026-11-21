@@ -60,3 +60,7 @@ Tests: `tests/tls/run.sh` (local `openssl s_server` with a good certificate, a w
 
 Content-Length, chunked and read-until-close bodies; redirects 301/302/303/307/308 (POST becomes GET on 301-303); https through `vapor.tls` (always verified).
 One request per connection. Not done (shortcut): compressed bodies, proxies, cookies, keep-alive. Test: `tests/http.lua` (a server in the same process).
+
+## Closing a handle someone waits on
+`vapor.close_fd(handle)` (called by every `close` in `vapor.net`) wakes the tasks waiting on that handle with `nil, "closed"`. Without it a task blocked in
+`accept`/`read` on a socket another task closes would never wake on Windows (a closed socket in a WSAPoll set stays silent). `tests/net.lua` covers it.

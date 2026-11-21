@@ -79,3 +79,14 @@ local out = stream.wrap({read = function() return nil, "eof" end, write = functi
 assert(stream.pipe(src, out))
 assert(table.concat(sink) == "pipe me")
 srv3:close()
+
+-- closing a handle wakes the tasks waiting on it (on Windows a closed socket in a poll set never wakes by itself)
+do
+  local s2 = assert(net.listen("127.0.0.1", 0))
+  local woke
+  vapor.spawn(function() local c, e = s2:accept(); woke = e or "accepted" end)
+  vapor.sleep(0.05)
+  s2:close()
+  vapor.sleep(0.05)
+  assert(woke == "closed", tostring(woke))
+end

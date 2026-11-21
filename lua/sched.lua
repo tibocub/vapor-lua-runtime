@@ -71,6 +71,15 @@ function vapor.wait_fd(fd, timeout, mode)
   return nil, e
 end
 
+-- a handle is about to be closed: tasks waiting on it are woken with nil,"closed" (the OS would not do it everywhere: a closed socket in a Windows poll set never wakes)
+function vapor.close_fd(fd)
+  for _, key in ipairs({fd, fd + WRITABLE}) do
+    local l = fdw[key]
+    fdw[key] = nil
+    if l then for _, tok in ipairs(l) do wake(tok, nil, "closed") end end
+  end
+end
+
 function vapor.push(name, ...)
   for i, tok in ipairs(pullers) do
     if waiting[tok.co] == tok then
