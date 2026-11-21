@@ -1,4 +1,5 @@
 /* vlr backend for Windows (mingw or MSVC). Paths in and out are UTF-8. */
+#include <winsock2.h>
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +40,7 @@ static void utf8_output(void)
 uint32_t vlr_caps(void)
 {
     utf8_output();
-    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC;
+    return VLR_CAP_NET | VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC;
 }
 
 int64_t vlr_now_ms(void)
@@ -78,19 +79,38 @@ static int stdin_ready(void)
 int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
 {
     int64_t end = timeout_ms < 0 ? -1 : vlr_now_ms() + timeout_ms;
-    int i, count;
+    WSAPOLLFD p[VLR_MAX_FDS];
+    int idx[VLR_MAX_FDS], i, j, ns, count, console;
 
-    for (i = 0; i < n; i++) {
-        if (fds[i] != 0) { strcpy(g_err, "only handle 0 (console input) is waitable"); return -1; }
+    /* handle 0 is the console input (polled); anything else is a socket (WSAPoll) */
+    for (i = 0, ns = 0, console = 0; i < n; i++) {
+        ready[i] = 0;
+        if (fds[i] == 0) { console = 1; continue; }
+        p[ns].fd = (SOCKET)(fds[i] & ~VLR_WRITABLE);
+        p[ns].events = (fds[i] & VLR_WRITABLE) ? POLLWRNORM : POLLRDNORM;
+        p[ns].revents = 0;
+        idx[ns++] = i;
     }
     for (;;) {
-        int64_t left;
+        int64_t left = end < 0 ? 1000000 : end - vlr_now_ms();
+        int slice;
 
-        for (i = 0, count = 0; i < n; i++) count += (ready[i] = stdin_ready());
+        count = 0;
+        if (console && stdin_ready()) {
+            for (i = 0; i < n; i++) if (fds[i] == 0) { ready[i] = 1; count++; }
+        }
+        slice = !console && ns > 0 ? (int)(left < 0 ? 0 : left > 1000000 ? 1000000 : left) : 0; /* sockets alone: one exact wait */
+        if (ns > 0) {
+            int r = WSAPoll(p, (ULONG)ns, count > 0 ? 0 : slice);
+
+            if (r < 0) { seterr(); return -1; }
+            for (j = 0; j < ns; j++) {
+                if (p[j].revents & (POLLRDNORM | POLLWRNORM | POLLHUP | POLLERR | POLLNVAL)) { ready[idx[j]] = 1; count++; }
+            }
+        }
         if (count > 0) return count;
-        left = end < 0 ? 1000000 : end - vlr_now_ms();
         if (left <= 0) return 0;
-        Sleep((DWORD)(left < 10 ? left : 10)); /* shortcut: 10 ms polling, a handle-based wait would be exact */
+        if (!(ns > 0 && !console)) Sleep((DWORD)(left < 10 ? left : 10)); /* shortcut: 10 ms polling while the console is involved */
     }
 }
 

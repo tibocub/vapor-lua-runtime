@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.." || exit 1
 set -e
 echo "== strict compile (our code only)"
 make -s gen
-cc -std=c99 -pedantic -Wall -Wextra -Werror -Iinclude -Ithird_party/lua -fsyntax-only src/vlr.c src/main.c src/platform_posix.c src/mod_fs.c src/mod_term.c src/vtinput.c
+cc -std=c99 -pedantic -Wall -Wextra -Werror -Iinclude -Ithird_party/lua -fsyntax-only src/vlr.c src/main.c src/platform_posix.c src/mod_fs.c src/mod_term.c src/vtinput.c src/mod_netraw.c src/net_posix.c
 echo "== tests under ASan+UBSan"
 make -s clean
 CC=clang CFLAGS="-O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined" LDFLAGS="-fsanitize=address,undefined" make -s vlr

@@ -9,11 +9,13 @@ LUASRC   = $(addprefix third_party/lua/,$(VLR_LUA_SRC))
 # modules.conf: sources (and -D flags) after the first two columns
 MODULES ?=
 GEN     ?= build
-MODTOK  := $(shell sh tools/modsrc.sh modules.conf $(EXT) $(MODULES))
+TARGET  ?= posix
+# the target's half of a module (@PLAT@ in modules.conf): sockets are posix or win32; wasm has none
+VLR_PLAT ?= $(if $(filter win32,$(TARGET)),win32,$(if $(filter wasm web,$(TARGET)),none,posix))
+MODTOK  := $(shell VLR_PLAT=$(VLR_PLAT) sh tools/modsrc.sh modules.conf $(EXT) $(MODULES))
 MODSRC   = $(filter-out -%,$(MODTOK))
 MODFLAGS = $(filter -%,$(MODTOK))
 
-TARGET  ?= posix
 RUN     ?=
 OBJDIR   = build/$(TARGET)
 ifeq ($(TARGET),win32)
@@ -21,7 +23,7 @@ CC       = x86_64-w64-mingw32-gcc
 EXE      = .exe
 PLATSRC  = src/platform_win32.c
 LUADEF   =
-LIBS     = -static
+LIBS     = -static -lws2_32
 else ifneq ($(filter wasm web,$(TARGET)),)
 # needs `source ~/Code/emsdk/emsdk_env.sh`; this build is for Node (NODERAWFS), the browser build is later
 CC       = emcc

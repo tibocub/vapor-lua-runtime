@@ -18,7 +18,7 @@
 #ifndef VLR_POSIX_NO_WAIT /* wasm brings its own vlr_caps and a non-blocking vlr_wait */
 uint32_t vlr_caps(void)
 {
-    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC | (VLR_DLOPEN ? VLR_CAP_DLOPEN : 0);
+    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC | (VLR_DLOPEN ? VLR_CAP_DLOPEN : 0) | VLR_CAP_NET;
 }
 #endif
 
@@ -36,11 +36,15 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
     int i, r, count = 0;
 
     if (n > VLR_MAX_FDS) { errno = EINVAL; return -1; }
-    for (i = 0; i < n; i++) { p[i].fd = fds[i]; p[i].events = POLLIN; p[i].revents = 0; }
+    for (i = 0; i < n; i++) {
+        p[i].fd = fds[i] & ~VLR_WRITABLE;
+        p[i].events = (fds[i] & VLR_WRITABLE) ? POLLOUT : POLLIN;
+        p[i].revents = 0;
+    }
     r = poll(p, (nfds_t)n, timeout_ms);
     if (r < 0) return errno == EINTR ? 0 : -1;
     for (i = 0; i < n; i++) {
-        ready[i] = (p[i].revents & (POLLIN | POLLHUP | POLLERR)) != 0; /* HUP/ERR: a read will report it */
+        ready[i] = (p[i].revents & (POLLIN | POLLOUT | POLLHUP | POLLERR)) != 0; /* HUP/ERR: a read will report it */
         count += ready[i];
     }
     return count;

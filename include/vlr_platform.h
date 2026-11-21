@@ -38,11 +38,38 @@ int64_t vlr_now_ms(void);
  */
 int vlr_wait(const int *fds, int n, int *ready, int timeout_ms);
 
+/* or'ed into a handle passed to vlr_wait: wait until it is writable instead of readable (connect, send backpressure).
+   The handle is reported ready with the flag still set. */
+#define VLR_WRITABLE 0x40000000
+
 /* calls cb for every entry except . and ..; a non-zero return from cb stops the listing */
 int vlr_fs_list(const char *path, int (*cb)(void *ud, const char *name), void *ud);
 int vlr_fs_mkdir(const char *path);
 int vlr_fs_rmdir(const char *path); /* empty directories only; os.remove cannot do this on Windows */
 int vlr_fs_stat(const char *path, vlr_stat *st);
+
+/*
+ * Networking (optional module "vapor.netraw", capability VLR_CAP_NET). Handles are sockets mapped to ints, waitable
+ * with vlr_wait (VLR_WRITABLE for connect completion and send). Everything is non-blocking except name resolution,
+ * which blocks the whole process while it runs (shortcut: a resolver handle would be exact).
+ * Return codes of the data calls: >0 or 0 = ok (bytes), VLR_NET_AGAIN = try again after vlr_wait, VLR_NET_EOF = peer closed
+ * (recv, accept never), VLR_NET_ERR = failed, text in vlr_net_error_text().
+ */
+#define VLR_NET_AGAIN (-2)
+#define VLR_NET_EOF   (-3)
+#define VLR_NET_ERR   (-1)
+int vlr_net_connect(const char *host, int port, int *h);  /* starts a TCP connect: wait VLR_WRITABLE, then vlr_net_status */
+int vlr_net_listen(const char *host, int port, int backlog, int *h); /* host NULL = all interfaces, port 0 = any */
+int vlr_net_accept(int h, int *client, char *addr, int addrlen, int *port);
+int vlr_net_status(int h);                                /* 0 if the socket has no pending error (connect succeeded) */
+int vlr_net_recv(int h, char *buf, int n);
+int vlr_net_send(int h, const char *buf, int n);
+int vlr_net_udp(const char *host, int port, int *h);      /* bound UDP socket (host NULL = all, port 0 = any) */
+int vlr_net_sendto(int h, const char *host, int port, const char *buf, int n);
+int vlr_net_recvfrom(int h, char *buf, int n, char *addr, int addrlen, int *port);
+int vlr_net_name(int h, int peer, char *addr, int addrlen, int *port); /* local or peer address */
+int vlr_net_close(int h);
+const char *vlr_net_error_text(void);
 
 /*
  * Console (terminal) access for input events. Non-blocking: vlr_console_read returns the bytes available now
