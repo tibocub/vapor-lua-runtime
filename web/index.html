@@ -41,7 +41,9 @@ print("hi " .. tostring(io.read("l")))</textarea>
   const $ = (id) => document.getElementById(id);
   let current = null;
   // mode switches (mouse on/off) are for terminals, not for this pane
-  const add = (s, cls) => { const e = document.createElement("span"); if (cls) e.className = cls; e.textContent = s.replace(/\x1b\[[?0-9;]*[hl]/g, "") + "\n"; $("out").append(e); };
+  const add = (s, cls) => { const e = document.createElement("span"); if (cls) e.className = cls; e.textContent = s.replace(/\x1b\[[?0-9;]*[hl]/g, "") + "\n";
+    const o = $("out"), atEnd = o.scrollHeight - o.scrollTop - o.clientHeight < 4; // follow the log only if the user was already at the bottom
+    o.append(e); if (atEnd) o.scrollTop = o.scrollHeight; };
   // one character cell of the output pane, measured from a probe span; the size in cells feeds vapor.size
   function cell() { const p = document.createElement("span"); p.textContent = "0000000000"; p.style.visibility = "hidden"; $("out").append(p);
     const r = p.getBoundingClientRect(); p.remove(); return { w: r.width / 10 || 8, h: r.height || 18 }; }
