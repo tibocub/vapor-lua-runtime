@@ -1,0 +1,4 @@
+# only the filesystem module
+target = posix
+modules = lfs
+out = build/vlr-mini

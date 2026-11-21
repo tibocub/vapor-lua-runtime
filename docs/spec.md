@@ -269,3 +269,11 @@ host: 40.5 -> 37.0 KB). Also passing on the board afterwards: `fs` (from /flash)
 its output bytes are the stdin queue and the escape sequences `vapor.input()` decodes (wasm `vlr_console_read` reads `Module.vlrIn`), so keys,
 mouse and resize behave as on a native tty; resize goes through `vlr.resize`. `?script=<url>` loads a script, `?dialect=5.4` selects plain 5.4.
 Verified: output renders in headless Firefox, byte-level input path in Node (`web/ev-test.mjs`); typing into wterm itself not tried by hand.
+
+## Identity and build profiles
+
+`vapor.version`, `vapor.platform` (linux, windows, macos, nuttx, wasm, posix) and `vapor.builtin` (set of compiled-in module names, generated
+with the registry) let a package manager see what the device already satisfies; `tests/identity.lua` keeps `vapor.builtin` and
+`package.preload` in sync. `tools/vlr-build [profile]` builds a vlr with a chosen module set for a target from a small `key = value`
+profile (`tools/mini.vlrprofile`: posix, lfs only: 324 KB vs 395 KB with everything); `--list` shows the modules in `modules.conf`.
+Not built yet: the vpm side (a device-aware resolver that reads `vapor.builtin` and asks `vlr-build` for missing native modules).

@@ -302,6 +302,25 @@ static int runembedded(lua_State *L, const unsigned char *src, unsigned int len,
 }
 
 void vlr_modules_open(lua_State *L); /* generated from modules.conf */
+extern const char *const vlr_builtin[]; /* NULL-terminated names of the compiled-in modules, same source */
+
+#ifndef VLR_VERSION
+#define VLR_VERSION "0.1.0"
+#endif
+
+#if defined(__EMSCRIPTEN__)
+#define VLR_PLATFORM "wasm"
+#elif defined(_WIN32)
+#define VLR_PLATFORM "windows"
+#elif defined(__NuttX__)
+#define VLR_PLATFORM "nuttx"
+#elif defined(__APPLE__)
+#define VLR_PLATFORM "macos"
+#elif defined(__linux__)
+#define VLR_PLATFORM "linux"
+#else
+#define VLR_PLATFORM "posix"
+#endif
 
 lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
 {
@@ -346,6 +365,20 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
     lua_setfield(L, -2, "console_size");
     lua_pushstring(L, dialect51 ? "5.1" : "5.4");
     lua_setfield(L, -2, "dialect");
+    lua_pushstring(L, VLR_VERSION);
+    lua_setfield(L, -2, "version");
+    lua_pushstring(L, VLR_PLATFORM);
+    lua_setfield(L, -2, "platform");
+    lua_newtable(L); /* builtin: set of compiled-in module names, so a package manager knows what is already satisfied */
+    {
+        const char *const *b;
+
+        for (b = vlr_builtin; *b != NULL; b++) {
+            lua_pushboolean(L, 1);
+            lua_setfield(L, -2, *b);
+        }
+    }
+    lua_setfield(L, -2, "builtin");
     lua_setglobal(L, "vapor");
 
     if ((dialect51 && runembedded(L, vlr_lua_compat, vlr_lua_compat_len, "=compat")) ||

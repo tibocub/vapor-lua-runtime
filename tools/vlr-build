@@ -1,0 +1,24 @@
+#!/bin/sh
+# vlr-build [profile] | --list : build a vlr with a chosen set of native modules for one target.
+# A profile is `key = value` lines: target (posix|win32|wasm|web), modules (names from modules.conf, empty = all),
+# ext (folder with the sibling checkouts), out (output file). Command line: vlr-build mini.vlrprofile
+# shortcut: drives the Makefile; the vpm side (device-aware dependency check against vapor.builtin) is not built yet.
+cd "$(dirname "$0")/.." || exit 1
+if [ "$1" = --list ]; then awk '!/^#/ && NF > 2 { print $1 }' modules.conf; exit 0; fi
+target=posix modules= ext= out=
+if [ -n "$1" ]; then
+  [ -f "$1" ] || { echo "vlr-build: no profile $1" >&2; exit 1; }
+  while IFS='=' read -r k v; do
+    k=$(echo "$k" | tr -d ' \t'); v=$(echo "$v" | sed 's/^[ \t]*//;s/[ \t]*$//')
+    case "$k" in target) target=$v ;; modules) modules=$v ;; ext) ext=$v ;; out) out=$v ;; ''|\#*) ;; *) echo "vlr-build: unknown key $k" >&2; exit 1 ;; esac
+  done < "$1"
+fi
+for m in $modules; do
+  awk -v m="$m" '!/^#/ && $1 == m { f = 1 } END { exit !f }' modules.conf || { echo "vlr-build: unknown module $m (see --list)" >&2; exit 1; }
+done
+set -- TARGET="$target" MODULES="$modules"
+[ -n "$ext" ] && set -- "$@" EXT="$ext"
+[ -n "$out" ] && set -- "$@" OUT="$out"
+# modules change the generated registry and the sources: rebuild from scratch so a stale object never survives
+rm -rf "build/$target" build/vlr_modules.c
+exec make -s "$@"

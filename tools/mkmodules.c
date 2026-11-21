@@ -24,6 +24,8 @@ int main(int argc, char **argv)
     for (i = 0; i < n; i++) printf("int %s(lua_State *L);\n", sym[i]);
     printf("void vlr_modules_open(lua_State *L)\n{\n    luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);\n");
     for (i = 0; i < n; i++) printf("    lua_pushcfunction(L, %s);\n    lua_setfield(L, -2, \"%s\");\n", sym[i], name[i]);
-    printf("    lua_pop(L, 1);\n}\n");
+    printf("    lua_pop(L, 1);\n}\nconst char *const vlr_builtin[] = {");
+    for (i = 0; i < n; i++) printf("\"%s\", ", name[i]);
+    printf("NULL};\n");
     return 0;
 }
