@@ -64,10 +64,23 @@ Experimental. Functions: `require("vapor.manifest").load(dir)`, `.check(m, dir)`
 
 `os.execute` works as in Lua (`vapor.caps.exec`); `os.exit` closes the Lua state first so finalizers run. Both are standard names, not `vapor.*`.
 
-## Networking and streams (optional modules `vapor.net`, `vapor.stream`)
+## Networking, TLS, HTTP, signatures (all experimental; see [net.md](net.md))
 
-Experimental; see [net.md](net.md). `vapor.caps.net` says whether the build and platform have sockets.
+| module | | meaning |
+|---|---|---|
+| `vapor.net`, `vapor.stream` | experimental | TCP/UDP for tasks, file-like streams (`read`, `readsome`, `write`, `lines`, `settimeout`, `on`, `pipe`); `net.connect/listen/udp/resolve`; names resolve without stopping other tasks |
+| `vapor.tls` | experimental | `tls.connect(host, port, opts)`, `tls.wrap(sock, host, opts)`; chain and host name always verified; roots from files, the Windows store, built-in list |
+| `std.http` | experimental | `http.get/post/request`; redirects, chunked, streaming `sink`, https |
+| `socket`, `std.socket` | experimental | LuaSocket-compatible subset so luasocket-based rocks run unmodified |
+| `vapor.sign` | experimental | `sign.verify(signature, message, public_key)`, ed25519 |
+| `vapor.close_fd(handle)` | experimental | wake tasks waiting on a handle about to be closed (`nil, "closed"`) |
+
+`vapor.caps.net` says whether the build and platform have sockets.
+
+## Interactive use
+
+`vlr` with no script (or `vlr -i`) starts the prompt (`vapor.repl`); `vlr -e 'code'` runs a chunk. Experimental.
 
 ## Not yet (planned, experimental when they appear)
 
-TLS, `vapor.spawn_process` (subprocess with pipes), `vapor.worker`, `vapor.gfx`, `vapor.sandbox`, `std.socket` (luasocket API).
+`vapor.spawn_process` (subprocess with pipes), `vapor.worker`, `vapor.gfx`, `vapor.sandbox`.
