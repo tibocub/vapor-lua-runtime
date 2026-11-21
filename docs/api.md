@@ -50,7 +50,7 @@ While `input` is on, the console belongs to the events: do not also read it with
 | call | | meaning |
 |---|---|---|
 | `vapor.fs.list(path)` | stable | array of names, or `nil, err` |
-| `vapor.fs.stat(path)` | stable | `{type="file"\|"dir"\|..., size=, mtime=}` or `nil, err` |
+| `vapor.fs.stat(path)` | stable | `{type="file"\|"dir", size=, mtime=}` or `nil, err` |
 | `vapor.fs.mkdir(path)` / `vapor.fs.rmdir(path)` | stable | `true` or `nil, err` (what `os.remove` cannot do for directories on Windows) |
 
 ## Process
