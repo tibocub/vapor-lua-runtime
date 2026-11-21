@@ -1,4 +1,7 @@
 -- snake rules (examples/snake/game.lua): movement, growth, walls, self collision, no reversing, food placement
+local probe = io.open("examples/snake/game.lua")
+if not probe then return end -- the browser/Node runner mounts only the test's own folder
+probe:close()
 package.path = "examples/snake/?.lua;" .. package.path
 local Game = require("game")
 local seq = 0
