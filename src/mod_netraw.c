@@ -20,6 +20,25 @@ static int l_connect(lua_State *L)
     return 1;
 }
 
+static int l_resolve_start(lua_State *L)
+{
+    int h, r = vlr_net_resolve_start(luaL_checkstring(L, 1), &h);
+
+    if (r != 0) return result(L, r);
+    lua_pushinteger(L, h);
+    return 1;
+}
+
+static int l_resolve_result(lua_State *L)
+{
+    char addr[64];
+    int r = vlr_net_resolve_result((int)luaL_checkinteger(L, 1), addr, sizeof addr);
+
+    if (r != 0) return result(L, r);
+    lua_pushstring(L, addr);
+    return 1;
+}
+
 static int l_listen(lua_State *L)
 {
     int h, r = vlr_net_listen(luaL_optstring(L, 1, NULL), (int)luaL_checkinteger(L, 2), (int)luaL_optinteger(L, 3, 16), &h);
@@ -126,7 +145,7 @@ static int l_close(lua_State *L)
 int luaopen_vapor_netraw(lua_State *L)
 {
     static const luaL_Reg funcs[] = {
-        {"connect", l_connect}, {"listen", l_listen}, {"udp", l_udp}, {"accept", l_accept}, {"status", l_status},
+        {"connect", l_connect}, {"resolve_start", l_resolve_start}, {"resolve_result", l_resolve_result}, {"listen", l_listen}, {"udp", l_udp}, {"accept", l_accept}, {"status", l_status},
         {"recv", l_recv}, {"send", l_send}, {"sendto", l_sendto}, {"recvfrom", l_recvfrom}, {"name", l_name},
         {"close", l_close}, {NULL, NULL}};
 

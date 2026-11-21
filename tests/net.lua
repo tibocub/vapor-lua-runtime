@@ -90,3 +90,18 @@ do
   vapor.sleep(0.05)
   assert(woke == "closed", tostring(woke))
 end
+
+-- name resolution does not stop other tasks: a ticking task keeps running while "localhost" and an unknown name resolve
+do
+  local ticks, stop = 0, false
+  vapor.spawn(function() while not stop do vapor.sleep(0.01); ticks = ticks + 1 end end)
+  local a = assert(net.resolve("localhost", 5))
+  assert(a == "127.0.0.1" or a == "::1", a)
+  local bad, err = net.resolve("no-such-host.invalid", 10)
+  assert(bad == nil and err, "an unknown name is an error")
+  assert(net.resolve("127.0.0.1") == "127.0.0.1")
+  vapor.sleep(0.05)
+  assert(ticks > 0, "the other task kept running")
+  stop = true
+  vapor.sleep(0.05)
+end

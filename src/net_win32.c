@@ -176,4 +176,88 @@ int vlr_net_name(int h, int peer, char *addr, int addrlen, int *port)
     return 0;
 }
 
+/* a worker thread runs getaddrinfo and sends one datagram "OK address" / "ER message" to a loopback UDP socket; that socket is the waitable handle */
+typedef struct { char host[256]; unsigned short port; } rjob;
+
+static DWORD WINAPI resolver(LPVOID arg)
+{
+    rjob *j = arg;
+    struct addrinfo hints, *res;
+    char line[200], num[INET6_ADDRSTRLEN + 1];
+    SOCKET s;
+    struct sockaddr_in to;
+    int rc;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    rc = getaddrinfo(j->host, NULL, &hints, &res);
+    if (rc != 0) {
+        snprintf(line, sizeof line, "ER %s", gai_strerrorA(rc));
+    } else {
+        num[0] = 0;
+        if (res->ai_family == AF_INET) InetNtopA(AF_INET, &((struct sockaddr_in *)res->ai_addr)->sin_addr, num, sizeof num);
+        else InetNtopA(AF_INET6, &((struct sockaddr_in6 *)res->ai_addr)->sin6_addr, num, sizeof num);
+        snprintf(line, sizeof line, "OK %s", num);
+        freeaddrinfo(res);
+    }
+    s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s != INVALID_SOCKET) {
+        memset(&to, 0, sizeof to);
+        to.sin_family = AF_INET;
+        to.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        to.sin_port = htons(j->port);
+        sendto(s, line, (int)strlen(line), 0, (struct sockaddr *)&to, sizeof to);
+        closesocket(s);
+    }
+    free(j);
+    return 0;
+}
+
+int vlr_net_resolve_start(const char *host, int *h)
+{
+    SOCKET s;
+    struct sockaddr_in a;
+    int alen = sizeof a;
+    u_long nb = 1;
+    rjob *j;
+    HANDLE t;
+
+    if (start() != 0) return VLR_NET_ERR;
+    s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s == INVALID_SOCKET) return fail();
+    memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (bind(s, (struct sockaddr *)&a, sizeof a) != 0 || getsockname(s, (struct sockaddr *)&a, &alen) != 0) { fail(); closesocket(s); return VLR_NET_ERR; }
+    ioctlsocket(s, FIONBIO, &nb);
+    j = malloc(sizeof *j);
+    if (j == NULL || strlen(host) >= sizeof j->host) { free(j); closesocket(s); snprintf(g_err, sizeof g_err, "host name too long"); return VLR_NET_ERR; }
+    strcpy(j->host, host);
+    j->port = ntohs(a.sin_port);
+    t = CreateThread(NULL, 0, resolver, j, 0, NULL);
+    if (t == NULL) { free(j); closesocket(s); snprintf(g_err, sizeof g_err, "unsupported"); return VLR_NET_ERR; }
+    CloseHandle(t);
+    *h = (int)s;
+    return 0;
+}
+
+int vlr_net_resolve_result(int h, char *addr, int addrlen)
+{
+    char line[256];
+    int n = recv((SOCKET)h, line, sizeof line - 1, 0);
+
+    if (n < 0) {
+        int e = WSAGetLastError();
+
+        if (e == WSAEWOULDBLOCK) return VLR_NET_AGAIN;
+        return fail_code(e);
+    }
+    closesocket((SOCKET)h);
+    line[n] = 0;
+    if (n >= 3 && line[0] == 'O' && line[1] == 'K') { snprintf(addr, (size_t)addrlen, "%s", line + 3); return 0; }
+    snprintf(g_err, sizeof g_err, "%.150s", n > 3 ? line + 3 : "name resolution failed");
+    return VLR_NET_ERR;
+}
+
 int vlr_net_close(int h) { return closesocket((SOCKET)h); }

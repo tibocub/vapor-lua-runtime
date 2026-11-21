@@ -43,7 +43,7 @@ else
 EXE      =
 PLATSRC  = src/platform_posix.c
 LUADEF   = -DLUA_USE_POSIX
-LIBS     = -lm
+LIBS     = -lm -lpthread
 ifneq ($(DYNAMIC),)
 # optional: require() can also load .so modules (package.cpath); the executable exports the Lua API for them
 LUADEF  += -DLUA_USE_DLOPEN

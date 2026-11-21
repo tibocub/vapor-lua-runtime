@@ -21,8 +21,27 @@ local function wrap(h, host, port)
   return stream.wrap(socket_ops(h), {handle = h, peer = {host, port}})
 end
 
+-- a name resolved without stopping the other tasks (a worker thread on desktop systems); targets that cannot hand the name to connect, which resolves it blocking
+local function numeric(host) return host:match("^%d+%.%d+%.%d+%.%d+$") or host:find(":", 1, true) end
+
+local function resolve(host, timeout)
+  if numeric(host) then return host end
+  local h = raw.resolve_start(host)
+  if not h then return host end
+  while true do
+    local addr, e = raw.resolve_result(h)
+    if addr then return addr end
+    if e ~= "again" then return nil, e end
+    local ok, werr = vapor.wait_fd(h, timeout)
+    if not ok then raw.close(h); return nil, werr end
+  end
+end
+M.resolve = resolve
+
 function M.connect(host, port, timeout)
-  local h, err = raw.connect(host, port)
+  local addr, rerr = resolve(host, timeout)
+  if not addr then return nil, rerr end
+  local h, err = raw.connect(addr, port)
   if not h then return nil, err end
   local ok, werr = vapor.wait_fd(h, timeout, "w")
   if not ok then raw.close(h); return nil, werr end

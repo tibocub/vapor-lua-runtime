@@ -69,6 +69,11 @@ int vlr_net_udp(const char *host, int port, int *h);      /* bound UDP socket (h
 int vlr_net_sendto(int h, const char *host, int port, const char *buf, int n);
 int vlr_net_recvfrom(int h, char *buf, int n, char *addr, int addrlen, int *port);
 int vlr_net_name(int h, int peer, char *addr, int addrlen, int *port); /* local or peer address */
+/* Name resolution that does not stop the process: vlr_net_resolve_start returns a waitable handle (wait for it readable with vlr_wait), then
+   vlr_net_resolve_result gives the numeric address (0), VLR_NET_AGAIN (not yet) or VLR_NET_ERR; the handle is closed by the result call when it is
+   done, or by vlr_net_close if the caller gives up. Targets that cannot (NuttX, wasm) return VLR_NET_ERR from start with the text "unsupported": use the blocking connect. */
+int vlr_net_resolve_start(const char *host, int *h);
+int vlr_net_resolve_result(int h, char *addr, int addrlen);
 int vlr_net_close(int h);
 const char *vlr_net_error_text(void);
 

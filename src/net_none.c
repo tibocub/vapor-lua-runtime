@@ -17,3 +17,5 @@ int vlr_net_sendto(int h, const char *host, int port, const char *buf, int n) { 
 int vlr_net_recvfrom(int h, char *buf, int n, char *addr, int addrlen, int *port) { (void)h; (void)buf; (void)n; (void)addr; (void)addrlen; (void)port; return none(); }
 int vlr_net_name(int h, int peer, char *addr, int addrlen, int *port) { (void)h; (void)peer; (void)addr; (void)addrlen; (void)port; return none(); }
 int vlr_net_close(int h) { (void)h; return 0; }
+int vlr_net_resolve_start(const char *host, int *h) { (void)host; (void)h; return none(); }
+int vlr_net_resolve_result(int h, char *addr, int addrlen) { (void)h; (void)addr; (void)addrlen; return none(); }

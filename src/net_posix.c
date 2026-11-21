@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <stdlib.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
@@ -170,5 +171,83 @@ int vlr_net_name(int h, int peer, char *addr, int addrlen, int *port)
     addr_text(&ss, addr, addrlen, port);
     return 0;
 }
+
+#if !defined(__NuttX__) && !defined(__EMSCRIPTEN__)
+#include <pthread.h>
+#include <signal.h>
+
+/* a worker thread runs getaddrinfo and writes one line ("OK address" / "ER message") into a pipe; the read end is the waitable handle */
+typedef struct { char host[256]; int wfd; } rjob;
+
+static void *resolver(void *arg)
+{
+    rjob *j = arg;
+    struct addrinfo hints, *res;
+    char line[200], num[INET6_ADDRSTRLEN + 1];
+    sigset_t set;
+    int rc;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGPIPE); /* the caller may have given up and closed its end */
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    rc = getaddrinfo(j->host, NULL, &hints, &res);
+    if (rc != 0) {
+        snprintf(line, sizeof line, "ER %s\n", gai_strerror(rc));
+    } else {
+        num[0] = 0;
+        if (res->ai_family == AF_INET) inet_ntop(AF_INET, &((struct sockaddr_in *)res->ai_addr)->sin_addr, num, sizeof num);
+        else inet_ntop(AF_INET6, &((struct sockaddr_in6 *)res->ai_addr)->sin6_addr, num, sizeof num);
+        snprintf(line, sizeof line, "OK %s\n", num);
+        freeaddrinfo(res);
+    }
+    (void)!write(j->wfd, line, strlen(line));
+    close(j->wfd);
+    free(j);
+    return NULL;
+}
+
+int vlr_net_resolve_start(const char *host, int *h)
+{
+    int fds[2];
+    rjob *j;
+    pthread_t t;
+
+    if (pipe(fds) != 0) return fail();
+    j = malloc(sizeof *j);
+    if (j == NULL || strlen(host) >= sizeof j->host) { free(j); close(fds[0]); close(fds[1]); snprintf(g_err, sizeof g_err, "host name too long"); return VLR_NET_ERR; }
+    strcpy(j->host, host);
+    j->wfd = fds[1];
+    nonblock(fds[0]);
+    if (pthread_create(&t, NULL, resolver, j) != 0) { free(j); close(fds[0]); close(fds[1]); snprintf(g_err, sizeof g_err, "unsupported"); return VLR_NET_ERR; }
+    pthread_detach(t);
+    *h = fds[0];
+    return 0;
+}
+
+int vlr_net_resolve_result(int h, char *addr, int addrlen)
+{
+    char line[256];
+    ssize_t n = read(h, line, sizeof line - 1);
+
+    if (n < 0) return errno == EAGAIN || errno == EINTR ? VLR_NET_AGAIN : fail();
+    close(h);
+    if (n >= 3 && line[0] == 'O' && line[1] == 'K') {
+        line[n] = 0;
+        line[strcspn(line, "\n")] = 0;
+        snprintf(addr, (size_t)addrlen, "%s", line + 3);
+        return 0;
+    }
+    line[n > 0 ? n : 0] = 0;
+    line[strcspn(line, "\n")] = 0;
+    snprintf(g_err, sizeof g_err, "%.150s", n > 3 ? line + 3 : "name resolution failed");
+    return VLR_NET_ERR;
+}
+#else
+int vlr_net_resolve_start(const char *host, int *h) { (void)host; (void)h; snprintf(g_err, sizeof g_err, "unsupported"); return VLR_NET_ERR; }
+int vlr_net_resolve_result(int h, char *addr, int addrlen) { (void)h; (void)addr; (void)addrlen; return VLR_NET_ERR; }
+#endif
 
 int vlr_net_close(int h) { return close(h); }
