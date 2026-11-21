@@ -41,7 +41,7 @@ core with optional modules.
 
 **Milestones from here:** M1 housekeeping (this spec, `docs/api.md`, CI, RP2040 heap gap); M2 module system and 0.2 freeze; M3 networking
 as the first real module; M4 vaporUI framebuffer renderer; M5 workers, then running `luarocks`. Parked: security tier, terminal images,
-`.vlb` bytecode, LuaJIT, single-file bundles. The detailed plan lives with the project owner's notes and is mirrored in the repo history.
+`.vlb` bytecode, LuaJIT, single-file bundles.
 
 ## Goal (original, kept for the record)
 
