@@ -1,5 +1,5 @@
 -- Diagnostic for terminal input: shows the raw bytes the console delivers and what vlr decodes them to, and logs them to a file.
--- usage:  vlr tests/win/keys.lua [mouse level 0|1|2] [logfile]      (q quits; default log reports/keys-last.txt)
+-- usage:  vlr tests/keys.lua [mouse level 0|1|2] [logfile]      (q quits; default log reports/keys-last.txt)
 -- Mouse level 2 reports hover too. Press the combinations you want to check, one at a time.
 local term = require("vapor.term")
 local mouse = tonumber(arg[1]) or 2

@@ -61,7 +61,7 @@ Background: in the first report everything automated passed, but by hand in real
 Run the diagnostic **once in each terminal you have** (Windows Terminal with PowerShell, Windows Terminal with cmd, classic cmd.exe window, classic PowerShell
 window, Ghostty). In the MinGW64 shell or directly in that terminal from the repo folder:
 
-    ./vlr.exe tests/win/keys.lua 2 reports/keys-<terminal-name>.txt
+    ./vlr.exe tests/keys.lua 2 reports/keys-<terminal-name>.txt
 
 (`<terminal-name>` e.g. `wt-powershell`, `cmd`, `ghostty`.) Each key press prints the raw bytes received and how vlr decoded them, and is saved to the file.
 Press these one at a time, waiting for the line to appear, then `q` to quit:
@@ -83,7 +83,7 @@ and reply with which terminals you ran and anything odd (lag, a frozen window, c
 vlr no longer asks the Windows console for VT escape bytes. It reads key and mouse records (virtual key, scan code, modifier state, character) and
 vaporUI's translator turns them into events; this is the path vaporUI tested with real keystrokes. Please `git pull`, rebuild (`sh tests/win/report.sh` does it), then:
 1. Send back the new report (`reports/windows-*.txt`; all lines must still be `ok`, including the ConPTY suite: those tests type into a pseudo console).
-2. Repeat the Round 2 key list with `./vlr.exe tests/win/keys.lua 2 reports/keys-<terminal>.txt` (lines now read `native record -> key,left,4`). A key that gives
+2. Repeat the Round 2 key list with `./vlr.exe tests/keys.lua 2 reports/keys-<terminal>.txt` (lines now read `native record -> key,left,4`). A key that gives
    **no line** is dropped by the console, the terminal or the translator: say which keys. Pay attention to Ctrl+letter, Ctrl+arrows, Ctrl+Shift combos,
    Alt+letter, mouse hover/drag in cmd, PowerShell, Windows Terminal.
 3. Reply with what changed compared to Round 2.

@@ -7,6 +7,7 @@
 #include "vlr_platform.h"
 #include "input.h" /* vaporUI */
 #include "winkeys.h"
+#include "term_vt.h"
 
 /* ---- input events: terminal bytes -> {name, args...} tuples (see lua/input.lua) ----
    The decoder is vaporUI's (src/input.c, vt.c, utf8.c, scancode.c; a sibling checkout, @EXT@/vaporUI): UTF-8, control keys, Alt,
@@ -149,6 +150,13 @@ static int l_console_events(lua_State *L)
     int n = 0, guard = 0;
 
     lua_newtable(L);
+    if (vlr_vt_active()) { /* Linux console in raw keycode mode: the events come ready-made */
+        VuiEvent ev[256];
+        int i, got = vlr_vt_events(ev, 256);
+
+        for (i = 0; i < got; i++) push_event(L, &ev[i], &n);
+        return 1;
+    }
     while (guard++ < 64 && vlr_console_record(&r)) push_record(L, &r, &n);
     return 1;
 }
@@ -156,7 +164,7 @@ static int l_console_events(lua_State *L)
 /* vapor.native() -> true when the console delivers records (use console_events) instead of bytes (console_read + decode) */
 static int l_native(lua_State *L)
 {
-    lua_pushboolean(L, vlr_console_native());
+    lua_pushboolean(L, vlr_console_native() || vlr_vt_active());
     return 1;
 }
 
@@ -186,8 +194,14 @@ static int l_record(lua_State *L)
 
 static int l_console_raw(lua_State *L)
 {
-    /* true/false, or 0/1/2 (2 = with mouse) */
-    lua_pushboolean(L, vlr_console_raw(lua_isboolean(L, 1) ? lua_toboolean(L, 1) : (int)luaL_checkinteger(L, 1)) == 0);
+    /* true/false, or 0/1/2/3 (see vlr_console_raw) */
+    int level = lua_isboolean(L, 1) ? lua_toboolean(L, 1) : (int)luaL_checkinteger(L, 1);
+    int ok;
+
+    if (level == 0) vlr_vt_stop();
+    ok = vlr_console_raw(level) == 0;
+    if (ok && level > 0) vlr_vt_start(); /* a Linux console switches to raw keycodes; elsewhere nothing */
+    lua_pushboolean(L, ok);
     return 1;
 }
 
