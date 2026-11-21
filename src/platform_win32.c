@@ -20,7 +20,27 @@ const char *vlr_last_error(void) { return g_err; }
 
 void vlr_flush(void) { fflush(NULL); }
 
-uint32_t vlr_caps(void) { return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC; }
+static UINT g_oldcp;
+
+static void restore_cp(void) { SetConsoleOutputCP(g_oldcp); }
+
+/* Lua strings are UTF-8 but a console defaults to an OEM code page (print("é") would show mojibake): switch it for the
+   life of the process. Runs once, from the first vlr_caps() call at state creation. */
+static void utf8_output(void)
+{
+    DWORD mode;
+
+    if (g_oldcp || !GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode)) return;
+    g_oldcp = GetConsoleOutputCP();
+    SetConsoleOutputCP(CP_UTF8);
+    atexit(restore_cp);
+}
+
+uint32_t vlr_caps(void)
+{
+    utf8_output();
+    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC;
+}
 
 int64_t vlr_now_ms(void)
 {
@@ -38,9 +58,15 @@ static int stdin_ready(void)
     DWORD mode, avail;
 
     if (GetConsoleMode(h, &mode)) {
-        /* shortcut: any console event (mouse, focus) counts as readable; filter with ReadConsoleInput when keys
-           arrive as events, see the keyboard milestone */
-        return WaitForSingleObject(h, 0) == WAIT_OBJECT_0;
+        /* the handle is signalled by any record (resize, focus, key-up), but ReadFile only returns for key-downs and
+           would block on the rest: drop those records, report readable only when a key-down is queued */
+        INPUT_RECORD r;
+
+        while (PeekConsoleInputW(h, &r, 1, &avail) && avail) {
+            if (r.EventType == KEY_EVENT && r.Event.KeyEvent.bKeyDown) return 1;
+            ReadConsoleInputW(h, &r, 1, &avail);
+        }
+        return 0;
     }
     if (GetFileType(h) == FILE_TYPE_PIPE) {
         if (!PeekNamedPipe(h, NULL, 0, NULL, &avail, NULL)) return 1; /* broken pipe: a read reports EOF */
