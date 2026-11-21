@@ -14,6 +14,11 @@ Get the repo up to date (the user pushes from the Linux side):
     git clone https://github.com/tibocub/vapor-lua-runtime   # first time
     cd vapor-lua-runtime && git pull                          # later times
 
+If you see lots of `No such file or directory` or `\r: command not found` lines, the checkout got Windows line endings. Fix once:
+
+    git config core.autocrlf false
+    git rm --cached -r -q . && git reset --hard      # re-checks out every file with LF (repo has a .gitattributes for it)
+
 ## 1. Run the one command
 From the repo root, in the MinGW64 shell:
 
