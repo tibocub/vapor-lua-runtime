@@ -153,7 +153,7 @@ do
     assert(status(c:read("a")) == 403, "encoded traversal refused")
     c:close()
     s2:close()
-    os.remove(dir .. "/index.html"); os.remove(dir .. "/a.txt"); os.remove(dir)
+    os.remove(dir .. "/index.html"); os.remove(dir .. "/a.txt"); vapor.fs.rmdir(dir)
   end
 end
 
