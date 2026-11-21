@@ -341,3 +341,25 @@ utf8 library symbol and its file is called `lutf8lib.c` like Lua's. Fixed in the
 Module split, app manifests and rockspec reading are done, so the core names in `docs/api.md` are frozen (tag `v0.2.0`). Board check on the RP2040
 (`rp2040-vlr`, flashed): `identity`, `decode`, `sched`, `events`, `compat51`, `modules` pass; keys and mouse arrive through the lazy `vapor.input`; Lua heap at
 start of a script 30.3 KB (31.8 KB before the split). Not re-run on the board after the split: `fs`, `exec`, `fd`, the lfs suite. NuttX sim image builds.
+
+## Networking, TLS, input backends (2026-11-21 evening)
+New since 0.2.0 (all experimental until used by a real app; core names unchanged):
+- `vapor.net` + `vapor.stream` (docs/net.md); `vapor.tls` (BearSSL engine `vapor.tlsraw` + `lua/tls.lua`, chain and host name always verified, roots from files, the Windows store and
+  the built-in list `vapor.cacerts`); `std.http` (HTTP/1.1 client); `socket` / `std.socket` (LuaSocket subset); `vapor.sign` (ed25519 verify, Monocypher); `vapor.close_fd`;
+  `vapor.repl` and `vlr -e CODE`; `VLR_LIBDIR`. vpm runs on vlr (HTTP/HTTPS through std.http, index signature through vapor.sign).
+- Input: the terminal decoder is vaporUI's (sibling checkout, latest main on purpose); Windows reads native console records (`vlr_console_record`); a real Linux VT uses raw keycodes
+  (`src/term_vt.c`, needs a hands-on test: docs/tty-test.md).
+- Verified: Linux (ASan/UBSan), wine, wasm/Node, real Windows (reports/), NuttX sim with host networking (HTTP, HTTPS with a mounted CA file, vpm starts). macOS and the Linux VT: CI / user.
+
+Host build sizes, stripped (x86-64, `-O2`), by module set; the Lua heap right after start is what matters on boards and barely moves with modules (embedded Lua is only loaded on `require`):
+
+| modules | stripped size | Lua heap at start |
+|---|---|---|
+| `vapor.fs` (smallest useful) | 274 KB | 44.8 KB |
+| + `vapor.term vapor.input` (vaporUI decoder, native key records) | 303 KB (+29) | 45.0 KB |
+| + `vapor.stream vapor.netraw vapor.net` instead of the terminal | 290 KB (+17) | - |
+| + TLS (`vapor.tlsraw vapor.tls`) and `vapor.cacerts` | +573 KB (BearSSL about 390, root list about 180) | 45.4 KB |
+| `vapor.sign` (Monocypher ed25519) | +57 KB | - |
+| everything, with lfs, lpeg, cjson | 1037 KB | 46.9 KB (42.7 KB with `--dialect=5.4`: the 5.1 compat layer costs 4 KB) |
+
+The RP2040 numbers are in the section above (32-bit, about 30 KB at start); modules are chosen per board in Kconfig, so a board that does not need TLS or the decoder does not pay for them.
