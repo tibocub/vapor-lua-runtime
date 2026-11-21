@@ -88,12 +88,14 @@ ifneq ($(filter wasm web,$(TARGET)),)
 $(OBJDIR)/platform_posix.o: CFLAGS += -DVLR_POSIX_NO_WAIT
 endif
 
+# generators run on the build machine, whatever the target compiler is (emcc, mingw cross)
+HOSTCC ?= cc
 build/embed: tools/embed.c
 	@mkdir -p build
-	$(CC) -o $@ $<
+	$(HOSTCC) -o $@ $<
 build/mkmodules: tools/mkmodules.c
 	@mkdir -p build
-	$(CC) -o $@ $<
+	$(HOSTCC) -o $@ $<
 # the module list is an input too: a stamp that changes when MODULES does regenerates the registry
 build/modules.stamp: FORCE
 	@mkdir -p build
@@ -110,7 +112,7 @@ $(GEN)/%.c: lua/%.lua build/embed
 gen: $(addprefix $(GEN)/,$(addsuffix .c,$(VLR_LUA_EMBED))) $(GEN)/vlr_modules.c
 
 test: $(OUT)
-	VLR="$(RUN) ./vlr$(EXE)" sh tests/run.sh
+	VLR="$(strip $(RUN) ./vlr$(EXE))" sh tests/run.sh
 
 check: vlr
 	sh tools/check.sh

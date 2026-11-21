@@ -44,7 +44,7 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
     r = poll(p, (nfds_t)n, timeout_ms);
     if (r < 0) return errno == EINTR ? 0 : -1;
     for (i = 0; i < n; i++) {
-        ready[i] = (p[i].revents & (POLLIN | POLLOUT | POLLHUP | POLLERR)) != 0; /* HUP/ERR: a read will report it */
+        ready[i] = (p[i].revents & (POLLIN | POLLOUT | POLLHUP | POLLERR | POLLNVAL)) != 0; /* HUP/ERR/NVAL: a read reports it (macOS answers NVAL for /dev/null) */
         count += ready[i];
     }
     return count;
