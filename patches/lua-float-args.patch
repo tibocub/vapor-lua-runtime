@@ -1,0 +1,16 @@
+diff --git a/third_party/lua/lauxlib.c b/third_party/lua/lauxlib.c
+index 923105e..35acf94 100644
+--- a/third_party/lua/lauxlib.c
++++ b/third_party/lua/lauxlib.c
+@@ -446,6 +446,11 @@ LUALIB_API lua_Integer luaL_checkinteger (lua_State *L, int arg) {
+   int isnum;
+   lua_Integer d = lua_tointegerx(L, arg, &isnum);
+   if (l_unlikely(!isnum)) {
++    extern int vlr_dotzero;  /* vlr: 0 = the 5.1 dialect (patches/lua-float-args.patch) */
++    if (!vlr_dotzero && lua_type(L, arg) == LUA_TNUMBER) {  /* 5.1 truncated float arguments: ("x"):sub(1.5), string.rep("a", 2.9) */
++      lua_Number n = lua_tonumber(L, arg);
++      if (n >= -9.2e18 && n <= 9.2e18) return (lua_Integer)n;
++    }
+     interror(L, arg);
+   }
+   return d;

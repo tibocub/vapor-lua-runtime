@@ -10,6 +10,18 @@ function table.maxn(t)
 end
 function math.pow(a, b) return a ^ b end
 math.mod = math.fmod
+math.log10 = function(x) return math.log(x, 10) end
+math.ldexp = function(m, e) return m * 2.0 ^ e end
+math.cosh = function(x) return (math.exp(x) + math.exp(-x)) / 2 end
+math.sinh = function(x) return (math.exp(x) - math.exp(-x)) / 2 end
+math.tanh = function(x) local a, b = math.exp(x), math.exp(-x); return (a - b) / (a + b) end
+function math.frexp(x)
+  if x == 0 or x ~= x or x == math.huge or x == -math.huge then return x, 0 end
+  local e = math.floor(math.log(math.abs(x), 2)) + 1
+  local m = x / 2.0 ^ e
+  if math.abs(m) >= 1 then m, e = m / 2, e + 1 elseif math.abs(m) < 0.5 then m, e = m * 2, e - 1 end
+  return m, e
+end
 
 local function envindex(f)
   for i = 1, 255 do
@@ -50,4 +62,27 @@ function os.execute(cmd)
   local ok, _, code = execute(cmd)
   if ok then return 0 end
   return code or -1
+end
+
+-- 5.1 module(name, ...): the module table is the global (dotted names nest), the caller's environment becomes it, package.loaded gets it;
+-- extra arguments are functions applied to it (package.seeall). Many older rocks are written this way.
+function package.seeall(m) return setmetatable(m, {__index = _G}) end
+
+function module(name, ...)
+  local mod = package.loaded[name]
+  if type(mod) ~= "table" then
+    local t = _G
+    for part in name:gmatch("[^.]+") do
+      if t[part] == nil then t[part] = {} end
+      t = t[part]
+    end
+    if type(t) ~= "table" then error("name conflict for module '" .. name .. "'", 2) end
+    mod = t
+    package.loaded[name] = mod
+  end
+  if mod._NAME == nil then
+    mod._NAME, mod._M, mod._PACKAGE = name, mod, name:match("^(.*%.)[^.]*$") or ""
+  end
+  setfenv(2, mod)
+  for _, f in ipairs({...}) do f(mod) end
 end
