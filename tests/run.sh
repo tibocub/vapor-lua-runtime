@@ -31,6 +31,7 @@ fi
 # the real terminal path through a pty (posix hosts only)
 if [ "$VLR" = ./vlr ] && command -v python3 >/dev/null 2>&1; then
   python3 -I tests/pty/run.py || fail=1
+  python3 -I tests/pty/snake.py || fail=1
 fi
 
 # os.exit closes the state (finalizers run) and keeps the status

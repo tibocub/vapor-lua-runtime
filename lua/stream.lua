@@ -17,6 +17,10 @@ function M.wrap(ops, extra)
 end
 
 function Stream:settimeout(t) self.timeout = t; return self end
+-- limits for untrusted peers (servers): s:setdeadline(ms) = an absolute vapor.now() time after which any wait fails with "timeout" (nil clears it, so one
+-- slow trickle cannot outlive it however often a byte arrives); s:setmaxline(n) = a line longer than n bytes fails with "line too long" instead of growing the buffer
+function Stream:setdeadline(at) self.deadline = at; return self end
+function Stream:setmaxline(n) self.maxline = n; return self end
 
 -- more bytes into the buffer: true, or nil,"eof" / nil,"timeout" / nil,err
 local function fill(self)
@@ -25,7 +29,13 @@ local function fill(self)
     local d, e = self.ops.read(4096)
     if d then self.buf = self.buf .. d; return true end
     if e ~= "again" then return nil, e end
-    local ok, werr = self.ops.wait("r", self.timeout)
+    local t = self.timeout
+    if self.deadline then
+      local left = (self.deadline - vapor.now()) / 1000
+      if left <= 0 then return nil, "timeout" end
+      if t == nil or left < t then t = left end
+    end
+    local ok, werr = self.ops.wait("r", t)
     if not ok then return nil, werr end
   end
 end
@@ -48,10 +58,12 @@ function Stream:read(fmt)
     while true do
       local i = self.buf:find("\n", 1, true)
       if i then
+        if self.maxline and i - 1 > self.maxline then return nil, "line too long" end
         local line = self.buf:sub(1, fmt == "L" and i or i - 1)
         self.buf = self.buf:sub(i + 1)
         return line
       end
+      if self.maxline and #self.buf > self.maxline then return nil, "line too long" end
       local ok, e = fill(self)
       if not ok then
         if e == "eof" and #self.buf > 0 then local rest = self.buf; self.buf = ""; return rest end

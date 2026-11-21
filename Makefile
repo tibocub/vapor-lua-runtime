@@ -12,8 +12,9 @@ GEN     ?= build
 TARGET  ?= posix
 # the target's half of a module (@PLAT@ in modules.conf): sockets are posix or win32; wasm has none
 VLR_PLAT ?= $(if $(filter win32,$(TARGET)),win32,$(if $(filter wasm web,$(TARGET)),none,posix))
+uniq = $(if $(1),$(firstword $(1)) $(call uniq,$(filter-out $(firstword $(1)),$(1))))
 MODTOK  := $(shell VLR_PLAT=$(VLR_PLAT) sh tools/modsrc.sh modules.conf $(EXT) $(MODULES))
-MODSRC   = $(filter-out -%,$(MODTOK))
+MODSRC   = $(call uniq,$(filter-out -%,$(MODTOK)))
 MODFLAGS = $(filter -%,$(MODTOK))
 
 RUN     ?=
