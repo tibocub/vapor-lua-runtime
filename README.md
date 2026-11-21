@@ -8,11 +8,11 @@ the hundred of MBs of ram usage per process.
 
 Notable features:
 - defaults to Lua 5.1 with optional 5.4 dialect compatibility where required
+- cross-platform (Linux/Win/Mac/BSD/WASM)
 - a core + standard lib under the form of many modules (like bare)
 - [vpm](https://github.com/tibocub/vpm), a Lua package manager compatible with
 luarocks, tailored specifically for VLR and vaporOS
-- can bundle C libraries for lua in the runtime
-- cross-platform (Linux/Win/Mac/BSD/WASM)
+- can bundle Lua libs written in C in the runtime's binary
 
 
 ## Why is Lua 5.1 the default ?
