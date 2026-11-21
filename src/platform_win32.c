@@ -167,6 +167,37 @@ static unsigned g_prev_buttons;
 static WCHAR g_high;
 
 #include <bcrypt.h>
+#include <wincrypt.h>
+
+/* the Windows ROOT certificate store as one PEM text (what a bundle file is on other systems) */
+int vlr_system_roots(char **pem, size_t *len)
+{
+    HCERTSTORE st = CertOpenSystemStoreA(0, "ROOT");
+    PCCERT_CONTEXT c = NULL;
+    size_t cap = 1 << 16, n = 0;
+    char *out = malloc(cap);
+
+    if (st == NULL || out == NULL) { if (st) CertCloseStore(st, 0); free(out); return -1; }
+    while ((c = CertEnumCertificatesInStore(st, c)) != NULL) {
+        DWORD need = 0;
+
+        if (!(c->dwCertEncodingType & X509_ASN_ENCODING)) continue;
+        if (!CryptBinaryToStringA(c->pbCertEncoded, c->cbCertEncoded, CRYPT_STRING_BASE64HEADER | CRYPT_STRING_NOCR, NULL, &need)) continue;
+        if (n + need + 1 > cap) {
+            char *p;
+
+            while (n + need + 1 > cap) cap *= 2;
+            if ((p = realloc(out, cap)) == NULL) { free(out); CertCloseStore(st, 0); return -1; }
+            out = p;
+        }
+        if (CryptBinaryToStringA(c->pbCertEncoded, c->cbCertEncoded, CRYPT_STRING_BASE64HEADER | CRYPT_STRING_NOCR, out + n, &need)) n += need;
+    }
+    CertCloseStore(st, 0);
+    out[n] = 0;
+    *pem = out;
+    *len = n;
+    return n > 0 ? 0 : -1;
+}
 int vlr_random(void *buf, int n) { return BCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)n, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0 ? 0 : -1; }
 
 int vlr_console_native(void) { return g_native; }

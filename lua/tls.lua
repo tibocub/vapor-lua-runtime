@@ -4,8 +4,8 @@
 --   opts.ca = PEM text or anchors | opts.cafile = path of a PEM bundle | opts.timeout   (default: $VLR_CA_FILE, $SSL_CERT_FILE, then the system bundle)
 --   tls.anchors(pem) -> trust anchors to reuse for many connections
 -- The engine (vapor.tlsraw) does no I/O; this file moves its bytes, so waiting stays in the scheduler. The stream is the one from vapor.stream.
--- shortcut: a peer that closes the transport without close_notify reads as end of data (truncation is not told apart); Windows has no PEM bundle
--- in the system, pass opts.cafile/ca (upgrade: read the Windows certificate store).
+-- shortcut: a peer that closes the transport without close_notify reads as end of data (truncation is not told apart). On Windows the trusted roots come
+-- from the certificate store (the ROOT store, read once per process).
 local raw = require("vapor.tlsraw")
 local stream = require("vapor.stream")
 local M = {}
@@ -34,6 +34,17 @@ local function load_anchors(opts)
     for _, p in ipairs(default_files) do candidates[#candidates + 1] = p end
     for _, p in ipairs(candidates) do
       if p ~= "" and slurp(p) then key = p; break end
+    end
+  end
+  if not key and not ca then -- no bundle file: the Windows certificate store
+    local pem = raw.system_roots()
+    if pem then
+      if not cache.system then
+        local a, err = raw.anchors(pem)
+        if not a then return nil, err end
+        cache.system = a
+      end
+      return cache.system
     end
   end
   if not key then return nil, "no trusted certificates: pass opts.ca (PEM text) or opts.cafile, or set VLR_CA_FILE" end

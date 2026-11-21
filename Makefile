@@ -23,7 +23,7 @@ CC       = x86_64-w64-mingw32-gcc
 EXE      = .exe
 PLATSRC  = src/platform_win32.c
 LUADEF   =
-LIBS     = -static -lws2_32 -lbcrypt
+LIBS     = -static -lws2_32 -lbcrypt -lcrypt32
 else ifneq ($(filter wasm web,$(TARGET)),)
 # needs `source ~/Code/emsdk/emsdk_env.sh`; this build is for Node (NODERAWFS), the browser build is later
 CC       = emcc

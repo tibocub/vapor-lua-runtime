@@ -41,8 +41,8 @@ The module list picks the target half through `@PLAT@` in `modules.conf`.
     tls.wrap(sock, host, opts)                           -- over an already connected socket stream
 
 The chain and the host name are **always** verified; there is no option to skip that. Trust: `opts.ca` (PEM text or `tls.anchors(pem)`), `opts.cafile`,
-then `$VLR_CA_FILE`, `$SSL_CERT_FILE`, then the usual system bundles (Linux, macOS, BSD). Windows has no PEM bundle: pass `cafile` for now
-(shortcut: reading the Windows certificate store is a later step). Errors say what failed: unknown issuer, expired, wrong host name.
+then `$VLR_CA_FILE`, `$SSL_CERT_FILE`, then the usual system bundles (Linux, macOS, BSD). On Windows the trusted roots come from the system certificate store
+(read once per process; untested on real Windows until the next report). Errors say what failed: unknown issuer, expired, wrong host name.
 
 Design: `vapor.tlsraw` is an engine without I/O (BearSSL, sibling checkout `../BearSSL`, `tests` pinned in CI); `lua/tls.lua` moves bytes between it and the
 socket, so waiting stays in the scheduler. Another backend (mbedTLS on NuttX, OpenSSL/Schannel later, browser fetch on wasm) only has to offer the same

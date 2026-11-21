@@ -108,6 +108,18 @@ static int add_cert(anchors *a, const unsigned char *der, size_t len)
     return 0;
 }
 
+/* tlsraw.system_roots() -> PEM text of the system's trusted roots (Windows), or nil where the system keeps them in bundle files */
+static int l_system_roots(lua_State *L)
+{
+    char *pem = NULL;
+    size_t len = 0;
+
+    if (vlr_system_roots(&pem, &len) != 0) { lua_pushnil(L); return 1; }
+    lua_pushlstring(L, pem, len);
+    free(pem);
+    return 1;
+}
+
 static int l_anchors(lua_State *L)
 {
     size_t len;
@@ -318,7 +330,7 @@ static int engine_gc(lua_State *L)
 
 int luaopen_vapor_tlsraw(lua_State *L)
 {
-    static const luaL_Reg funcs[] = {{"anchors", l_anchors}, {"client", l_client}, {NULL, NULL}};
+    static const luaL_Reg funcs[] = {{"anchors", l_anchors}, {"system_roots", l_system_roots}, {"client", l_client}, {NULL, NULL}};
     static const luaL_Reg methods[] = {{"state", engine_state}, {"take", engine_take}, {"put", engine_put}, {"send", engine_send},
                                        {"flush", engine_flush}, {"recv", engine_recv}, {"close", engine_close},
                                        {"error", engine_error}, {NULL, NULL}};

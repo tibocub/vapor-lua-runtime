@@ -135,6 +135,8 @@ int vlr_console_size(int *cols, int *rows)
 int vlr_console_raw(int enable) { (void)enable; return 0; }
 #endif
 
+int vlr_system_roots(char **pem, size_t *len) { (void)pem; (void)len; return -1; }
+
 int vlr_random(void *buf, int n)
 {
     FILE *f = fopen("/dev/urandom", "rb");

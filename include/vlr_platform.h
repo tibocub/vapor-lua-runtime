@@ -5,6 +5,7 @@
 #ifndef VLR_PLATFORM_H
 #define VLR_PLATFORM_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* capability bits reported to Lua as vapor.caps (a backend ORs what it really supports) */
@@ -96,6 +97,9 @@ typedef struct {
 } vlr_record;
 int vlr_console_native(void);
 int vlr_console_record(vlr_record *r);
+
+/* the system's trusted root certificates as PEM text in a malloc'd buffer (Windows certificate store); -1 where there is none (the TLS layer then reads the usual bundle files) */
+int vlr_system_roots(char **pem, size_t *len);
 
 /* n random bytes from the operating system's source (TLS seeding); 0 on success, -1 if there is none */
 int vlr_random(void *buf, int n);
