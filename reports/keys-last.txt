@@ -1,1 +1,0 @@
-keys: raw bytes -> decoded events. platform=linux mouse=2  (q quits)
