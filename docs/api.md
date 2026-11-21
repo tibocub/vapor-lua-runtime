@@ -53,6 +53,13 @@ While `input` is on, the console belongs to the events: do not also read it with
 | `vapor.fs.stat(path)` | stable | `{type="file"\|"dir", size=, mtime=}` or `nil, err` |
 | `vapor.fs.mkdir(path)` / `vapor.fs.rmdir(path)` | stable | `true` or `nil, err` (what `os.remove` cannot do for directories on Windows) |
 
+## Apps (optional module `vapor.manifest`)
+
+`vlr <folder>` runs an app folder: `manifest.lua` (data only, evaluated with an empty environment) plus the entry script (default `main.lua`).
+Fields: `name`, `version`, `entry`, `needs = {vlr = "0.2", dialect = "5.4", caps = {...}, modules = {...}}`. Modules count if built in (`vapor.builtin`) or
+found as Lua files in `<folder>/lua_modules` or `<folder>`. If anything is missing the app is refused with the reasons and exit status 1.
+Experimental until 0.2. Functions: `require("vapor.manifest").load(dir)`, `.check(m, dir)`, `.main(dir, ...)`.
+
 ## Process
 
 `os.execute` works as in Lua (`vapor.caps.exec`); `os.exit` closes the Lua state first so finalizers run. Both are standard names, not `vapor.*`.
