@@ -82,3 +82,8 @@ the OS itself builds a chain. Shortcut: the built-in list is as old as the build
 `net.connect` resolves names through a worker thread (`vlr_net_resolve_start/result`: a pipe on POSIX, a loopback UDP socket on Windows, either waitable), so other tasks keep running during a slow lookup.
 `net.resolve(host, timeout)` is the same step on its own. NuttX and wasm have no worker thread here: they keep the blocking lookup inside connect (the start call says "unsupported").
 Shortcut: the first address returned is used (no Happy Eyeballs); `udp`/`listen`/`sendto` with a name still resolve blocking (they normally get numeric addresses).
+
+## LuaSocket companions (2026-11-22)
+`ltn12`, `mime`, `socket.url` and `socket.http` are pure Lua in vlr (`lua/ltn12.lua`, `mime.lua`, `socket_url.lua`, `socket_http.lua`), same APIs as LuaSocket 3, so rocks written for it run unmodified.
+Shortcuts: `socket.http` is http-only (as in LuaSocket; https goes through `std.http`), no proxy, no keep-alive, `step` ignored; `mime.unb64` can drop bits when a chunk
+boundary splits a 4-character group; qp/wrap/eol work per chunk; no `socket.smtp`, `ftp`, `headers`. `receive("*l")` now drops every CR like LuaSocket (it used to keep one).

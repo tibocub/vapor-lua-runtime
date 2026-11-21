@@ -23,7 +23,7 @@ end)
 local c = socket.tcp()
 c:settimeout(5)
 assert(c:connect("127.0.0.1", port) == 1)
-assert(c:receive() == "hello\r")           -- "*l" keeps no newline, a CR stays like luasocket
+assert(c:receive() == "hello")             -- "*l" drops the newline and any CR, like luasocket
 assert(c:receive("*l") == "world")
 assert(c:send("ping") == 4)
 assert(c:receive(10) == "0123456789")

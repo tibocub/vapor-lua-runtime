@@ -6,7 +6,7 @@
 --   socket.udp() -> setpeername/sendto/receive/receivefrom/settimeout/close; socket.select(recvt, sendt, timeout) -> readable, writable, err
 --   socket.gettime() (seconds, float), socket.sleep(s), socket.dns.toip(name), socket.dns.gethostname(), socket._VERSION, socket.skip, socket.try/newtry/protect
 -- Not done (shortcuts): socket.select polls every 5 ms instead of waiting on all handles at once; dns.toip only resolves through connect-time lookup (returns the
--- name if it already is an address); the url/ltn12/mime/http/smtp/ftp helper modules of luasocket are separate rocks (use std.http for HTTP).
+-- name if it already is an address); ltn12, mime, socket.url and socket.http are in vlr (socket_*.lua, ltn12.lua, mime.lua); smtp/ftp/headers are not.
 local vapor = vapor
 local net = require("vapor.net")
 local raw = require("vapor.netraw")
@@ -85,7 +85,7 @@ function Client:receive(pattern, prefix)
   if not s then return nil, "closed" end
   pattern = clean(pattern or "l")
   local out, err
-  if pattern == "l" then out, err = s:read("l")
+  if pattern == "l" then out, err = s:read("l"); if out then out = out:gsub("\r", "") end  -- LuaSocket drops every CR in line mode
   elseif pattern == "L" then out, err = s:read("L")
   elseif pattern == "a" then out, err = s:read("a"); if out == "" and not err then out, err = nil, "closed" end
   elseif type(pattern) == "number" then out, err = s:read(pattern)
