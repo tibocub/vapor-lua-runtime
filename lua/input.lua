@@ -12,6 +12,7 @@ local function feed(list) for _, e in ipairs(list) do vapor.push(table.unpack(e)
 local input
 
 local function pump()
+  if term.native() then feed(term.console_events()); return end -- Windows: native key/mouse records, no escape bytes
   local bytes = term.console_read(256)
   if bytes == nil then input(false); vapor.push("quit"); return end
   if #bytes > 0 then feed(term.decode(bytes)) end
@@ -33,7 +34,7 @@ end
 function input(opts)
   if opts then
     local mouse = type(opts) == "table" and opts.mouse or 0
-    local level = mouse > 0 and 2 or 1
+    local level = mouse >= 2 and 3 or mouse > 0 and 2 or 1 -- console_raw: 1 raw, 2 + clicks/drag, 3 + motion
     if on and level ~= rawlevel then term.console_raw(level); rawlevel = level end
     if not on then
       term.console_raw(level)
@@ -44,13 +45,13 @@ function input(opts)
       vapor._source(0, pump)
       vapor._after(250, poll_size)
     end
+    if term.native() then return end -- the console reports mouse through records; no terminal mode sequences
     io.stdout:write(mouse >= 2 and "\27[?1003h\27[?1006h" or mouse == 1 and "\27[?1002h\27[?1000h\27[?1006h" or "")
     io.stdout:flush()
   elseif on then
     on = false
     vapor._source(0, nil)
-    io.stdout:write("\27[?1006l\27[?1003l\27[?1002l\27[?1000l")
-    io.stdout:flush()
+    if not term.native() then io.stdout:write("\27[?1006l\27[?1003l\27[?1002l\27[?1000l"); io.stdout:flush() end
     term.console_raw(false)
   end
 end

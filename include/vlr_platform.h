@@ -78,8 +78,24 @@ const char *vlr_net_error_text(void);
  * a terminal (wasm) have no console bytes: the page pushes events directly. vlr_console_size gives columns and rows.
  */
 int vlr_console_read(char *buf, int n);
-int vlr_console_raw(int enable); /* 0 restore, 1 raw, 2 raw with mouse (Windows turns quick-edit off for it; elsewhere same as 1) */
+int vlr_console_raw(int enable); /* 0 restore, 1 raw, 2 raw + mouse clicks/drag, 3 raw + motion too (Windows turns quick-edit off for mouse; elsewhere 2 and 3 are 1) */
 int vlr_console_size(int *cols, int *rows);
+
+/*
+ * Native key and mouse records, for consoles that report them instead of escape bytes (Windows). vlr_console_native() is 1 while
+ * the console is raw and delivers records: then use vlr_console_record (non-blocking, wait with vlr_wait on handle 0 first) and
+ * not vlr_console_read. Fields are the plain numbers of a Windows KEY_EVENT / MOUSE_EVENT record (see vaporUI src/winkeys.h);
+ * the platform has already paired UTF-16 surrogates and made mouse cells relative to the visible window.
+ * Returns 1 and fills *r, or 0 when no record is queued. Other targets: native is 0 and no records exist.
+ */
+typedef struct {
+    int kind; /* 1 key press, 2 mouse */
+    unsigned vk, scan, uc, unshifted, ctrl; /* key: virtual key, scan code, character (0 none), character without modifiers, control state */
+    unsigned buttons, prev_buttons, flags, x, y; /* mouse */
+    int level; /* mouse reporting asked for: 0 off, 1 clicks and drag, 2 also motion */
+} vlr_record;
+int vlr_console_native(void);
+int vlr_console_record(vlr_record *r);
 
 /*
  * Runs a shell command line (os.execute). Returns the exit code 0..255, or -1 with vlr_last_error set.

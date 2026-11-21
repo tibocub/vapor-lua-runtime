@@ -1,9 +1,12 @@
 /* vapor.term: console access and the terminal byte decoder (platform: vlr_console_*, decoder: vtinput.c).
    The Lua side is lua/input.lua (vapor.input). Optional module "vapor.term". */
+#include <string.h>
+
 #include "lauxlib.h"
 #include "lua.h"
 #include "vlr_platform.h"
 #include "input.h" /* vaporUI */
+#include "winkeys.h"
 
 /* ---- input events: terminal bytes -> {name, args...} tuples (see lua/input.lua) ----
    The decoder is vaporUI's (src/input.c, vt.c, utf8.c, scancode.c; a sibling checkout, @EXT@/vaporUI): UTF-8, control keys, Alt,
@@ -126,6 +129,61 @@ static int l_console_read(lua_State *L)
     return 1;
 }
 
+/* record at the top of the stack (a table with the vlr_record numbers) or a platform record -> event tuple appended to the result table */
+static void push_record(lua_State *L, const vlr_record *r, int *n)
+{
+    VuiEvent e = {.type = VUI_EVENT_NONE};
+
+    if (r->kind == 1) {
+        if (!vui_winkey_translate(r->vk, r->scan, r->uc, r->unshifted, r->ctrl, &e)) return;
+    } else if (r->kind == 2) {
+        if (!vui_winmouse_translate(r->buttons, r->prev_buttons, r->flags, r->x, r->y, r->ctrl, r->level, &e)) return;
+    }
+    push_event(L, &e, n);
+}
+
+/* vapor.console_events() -> array of event tuples from the native console records queued now (Windows); {} when none */
+static int l_console_events(lua_State *L)
+{
+    vlr_record r;
+    int n = 0, guard = 0;
+
+    lua_newtable(L);
+    while (guard++ < 64 && vlr_console_record(&r)) push_record(L, &r, &n);
+    return 1;
+}
+
+/* vapor.native() -> true when the console delivers records (use console_events) instead of bytes (console_read + decode) */
+static int l_native(lua_State *L)
+{
+    lua_pushboolean(L, vlr_console_native());
+    return 1;
+}
+
+/* vapor.record{kind=1, vk=, scan=, uc=, unshifted=, ctrl=} (or kind=2 mouse fields) -> array of tuples: the record translation without a
+   console, for tests */
+static int l_record(lua_State *L)
+{
+    static const char *const names[] = {"vk", "scan", "uc", "unshifted", "ctrl", "buttons", "prev_buttons", "flags", "x", "y", "level"};
+    vlr_record r;
+    unsigned *f[] = {&r.vk, &r.scan, &r.uc, &r.unshifted, &r.ctrl, &r.buttons, &r.prev_buttons, &r.flags, &r.x, &r.y};
+    int i, n = 0;
+
+    luaL_checktype(L, 1, LUA_TTABLE);
+    memset(&r, 0, sizeof r);
+    lua_getfield(L, 1, "kind");
+    r.kind = (int)luaL_optinteger(L, -1, 1);
+    lua_pop(L, 1);
+    for (i = 0; i < 11; i++) {
+        lua_getfield(L, 1, names[i]);
+        if (i < 10) *f[i] = (unsigned)luaL_optinteger(L, -1, 0); else r.level = (int)luaL_optinteger(L, -1, 0);
+        lua_pop(L, 1);
+    }
+    lua_newtable(L);
+    push_record(L, &r, &n);
+    return 1;
+}
+
 static int l_console_raw(lua_State *L)
 {
     /* true/false, or 0/1/2 (2 = with mouse) */
@@ -147,7 +205,8 @@ static int l_console_size(lua_State *L)
 int luaopen_vapor_term(lua_State *L)
 {
     static const luaL_Reg funcs[] = {{"console_read", l_console_read}, {"console_raw", l_console_raw},
-                                     {"console_size", l_console_size}, {NULL, NULL}};
+                                     {"console_size", l_console_size}, {"console_events", l_console_events},
+                                     {"native", l_native}, {"record", l_record}, {NULL, NULL}};
     static const luaL_Reg decfuncs[] = {{"decode", l_decode}, {"decode_flush", l_decode_flush},
                                         {"decode_pending", l_decode_pending}, {NULL, NULL}};
     VuiInputDecoder *d;

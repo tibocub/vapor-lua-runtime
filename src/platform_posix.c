@@ -135,6 +135,9 @@ int vlr_console_size(int *cols, int *rows)
 int vlr_console_raw(int enable) { (void)enable; return 0; }
 #endif
 
+int vlr_console_native(void) { return 0; }
+int vlr_console_record(vlr_record *r) { (void)r; return 0; }
+
 #ifdef VLR_POSIX_NO_WAIT
 int vlr_exec(const char *cmd) /* wasm: no processes */
 {
