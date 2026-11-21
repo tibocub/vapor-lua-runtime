@@ -9,7 +9,8 @@ cc -std=c99 -pedantic -Wall -Wextra -Werror -Iinclude -Ithird_party/lua -fsyntax
 cc -std=c11 -pedantic -Wall -Wextra -Werror -Iinclude -Ithird_party/lua -I../vaporUI/src -I../vaporUI/include -fsyntax-only src/mod_term.c src/term_vt.c
 echo "== tests under ASan+UBSan"
 make -s clean
-CC=clang CFLAGS="-O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined" LDFLAGS="-fsanitize=address,undefined" make -s vlr
+# THIRDFLAGS: BearSSL calls its method tables through differently typed pointers and reads unaligned on purpose; clang flags both
+CC=clang CFLAGS="-O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined " THIRDFLAGS="-fno-sanitize=function,alignment" LDFLAGS="-fsanitize=address,undefined" make -s vlr
 sh tests/run.sh
 echo "== normal build, tests, size"
 make -s clean

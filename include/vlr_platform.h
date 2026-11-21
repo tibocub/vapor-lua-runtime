@@ -97,6 +97,9 @@ typedef struct {
 int vlr_console_native(void);
 int vlr_console_record(vlr_record *r);
 
+/* n random bytes from the operating system's source (TLS seeding); 0 on success, -1 if there is none */
+int vlr_random(void *buf, int n);
+
 /*
  * Runs a shell command line (os.execute). Returns the exit code 0..255, or -1 with vlr_last_error set.
  * cmd == NULL asks whether a shell exists: returns 1 or 0. Backends without one return -1/0 and omit VLR_CAP_EXEC.

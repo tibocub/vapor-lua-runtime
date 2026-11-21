@@ -23,7 +23,7 @@ CC       = x86_64-w64-mingw32-gcc
 EXE      = .exe
 PLATSRC  = src/platform_win32.c
 LUADEF   =
-LIBS     = -static -lws2_32
+LIBS     = -static -lws2_32 -lbcrypt
 else ifneq ($(filter wasm web,$(TARGET)),)
 # needs `source ~/Code/emsdk/emsdk_env.sh`; this build is for Node (NODERAWFS), the browser build is later
 CC       = emcc
@@ -77,10 +77,11 @@ $(OBJDIR)/%.o: $(GEN)/%.c
 
 $(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF) -include vlr_lua.h
 # third-party module sources are built as their authors expect (no -std, warnings off); our own (./...) keep the strict flags
+# THIRDFLAGS: extra flags for third-party module sources only (tools/check.sh: sanitizer exceptions)
 define modrule
 $(OBJDIR)/m_$(subst /,_,$(1:.c=.o)): $(1)
 	@mkdir -p $(OBJDIR)
-	$(CC) $(if $(filter ./%,$(1)),$(CFLAGS),$(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w) $(MODFLAGS) -c -o $$@ $$<
+	$(CC) $(if $(filter ./%,$(1)),$(CFLAGS),$(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(THIRDFLAGS)) $(MODFLAGS) -c -o $$@ $$<
 endef
 $(foreach s,$(MODSRC),$(eval $(call modrule,$(s))))
 $(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
@@ -101,7 +102,7 @@ build/modules.stamp: FORCE
 	@mkdir -p build
 	@echo '$(MODULES)' | cmp -s - $@ || echo '$(MODULES)' > $@
 FORCE:
-$(GEN)/vlr_modules.c: modules.conf build/mkmodules build/modules.stamp
+$(GEN)/vlr_modules.c: modules.conf build/mkmodules build/modules.stamp $(wildcard lua/*.lua)
 	@mkdir -p $(GEN)
 	VLR_EXT=$(EXT) build/mkmodules modules.conf $(MODULES) > $@
 $(GEN)/%.c: lua/%.lua build/embed

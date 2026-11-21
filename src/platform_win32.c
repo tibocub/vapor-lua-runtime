@@ -166,6 +166,9 @@ static int g_level;
 static unsigned g_prev_buttons;
 static WCHAR g_high;
 
+#include <bcrypt.h>
+int vlr_random(void *buf, int n) { return BCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)n, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0 ? 0 : -1; }
+
 int vlr_console_native(void) { return g_native; }
 
 /* enable: 0 restore, 1 raw, 2 raw + mouse (clicks, drag), 3 raw + motion. The console reports native key and mouse records (no VT input):

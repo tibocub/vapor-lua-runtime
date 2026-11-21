@@ -32,3 +32,20 @@ The module list picks the target half through `@PLAT@` in `modules.conf`.
 - No TLS yet (planned: verification on by default). No IPv6-only options, no socket options (`setsockopt`) exposed, no `shutdown` half-close.
 - Windows: while the console is also waited on, polling is 10 ms slices (sockets alone get an exact wait).
 - The luasocket-compatible API (`std.socket`) is the planned next layer so existing Lua network libraries run unchanged.
+
+## TLS (`vapor.tls`)
+
+    local tls = require("vapor.tls")
+    local s, err = tls.connect("example.com", 443)       -- a stream like vapor.net's; handshake done
+    s:write("GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n"); print(s:read("l"))
+    tls.wrap(sock, host, opts)                           -- over an already connected socket stream
+
+The chain and the host name are **always** verified; there is no option to skip that. Trust: `opts.ca` (PEM text or `tls.anchors(pem)`), `opts.cafile`,
+then `$VLR_CA_FILE`, `$SSL_CERT_FILE`, then the usual system bundles (Linux, macOS, BSD). Windows has no PEM bundle: pass `cafile` for now
+(shortcut: reading the Windows certificate store is a later step). Errors say what failed: unknown issuer, expired, wrong host name.
+
+Design: `vapor.tlsraw` is an engine without I/O (BearSSL, sibling checkout `../BearSSL`, `tests` pinned in CI); `lua/tls.lua` moves bytes between it and the
+socket, so waiting stays in the scheduler. Another backend (mbedTLS on NuttX, OpenSSL/Schannel later, browser fetch on wasm) only has to offer the same
+`anchors/client/state/take/put/send/recv/flush/close/error` calls. A peer closing the transport without `close_notify` reads as end of data.
+Tests: `tests/tls/run.sh` (local `openssl s_server` with a good certificate, a wrong-name one and an untrusted one); a manual check against
+`example.com`, `expired.badssl.com` and `wrong.host.badssl.com` passes. Costs about 390 KB of code on the host: the module is optional (profiles).

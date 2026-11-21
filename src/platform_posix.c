@@ -135,6 +135,15 @@ int vlr_console_size(int *cols, int *rows)
 int vlr_console_raw(int enable) { (void)enable; return 0; }
 #endif
 
+int vlr_random(void *buf, int n)
+{
+    FILE *f = fopen("/dev/urandom", "rb");
+    int ok = f != NULL && fread(buf, 1, (size_t)n, f) == (size_t)n;
+
+    if (f != NULL) fclose(f);
+    return ok ? 0 : -1;
+}
+
 int vlr_console_native(void) { return 0; }
 int vlr_console_record(vlr_record *r) { (void)r; return 0; }
 

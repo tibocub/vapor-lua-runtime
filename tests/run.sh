@@ -38,6 +38,9 @@ printf 'setmetatable({}, {__gc = function() io.write("closed") end})\nos.exit(7)
 out=$($VLR "$f" </dev/null 2>/dev/null); rc=$?
 if [ "$rc" = 7 ] && [ "$out" = closed ]; then echo "ok   os.exit"; else echo "FAIL os.exit (rc=$rc out=$out)"; fail=1; fi
 rm -f "$f"
+# TLS against local openssl servers (posix hosts)
+if [ "$VLR" = ./vlr ]; then sh tests/tls/run.sh || fail=1; fi
+
 # -e and the prompt (no script)
 out=$($VLR -e 'io.write(40 + 2)' </dev/null 2>&1)
 if [ "$out" = 42 ]; then echo "ok   -e"; else echo "FAIL -e (out=$out)"; fail=1; fi

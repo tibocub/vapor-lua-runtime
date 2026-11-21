@@ -17,6 +17,7 @@ jobs:
           git clone https://github.com/mpx/lua-cjson ../lua-cjson && git -C ../lua-cjson checkout -q 718f27293a981fb5e9e662e9aec0b7cf78317da6
           git clone --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
           git clone https://github.com/LoupVaillant/Monocypher ../Monocypher && git -C ../Monocypher checkout -q ab2b16dd619ad5f6979a4fbe69cfa324a6fcc35f
+          git clone https://www.bearssl.org/git/BearSSL ../BearSSL && git -C ../BearSSL checkout -q 7bea48e5e850ab4cafbe68d3765cdaba13a86d6f
           curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
       - run: make vlr
       - run: make test
@@ -40,6 +41,7 @@ jobs:
           git clone https://github.com/mpx/lua-cjson ../lua-cjson && git -C ../lua-cjson checkout -q 718f27293a981fb5e9e662e9aec0b7cf78317da6
           git clone --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
           git clone https://github.com/LoupVaillant/Monocypher ../Monocypher && git -C ../Monocypher checkout -q ab2b16dd619ad5f6979a4fbe69cfa324a6fcc35f
+          git clone https://www.bearssl.org/git/BearSSL ../BearSSL && git -C ../BearSSL checkout -q 7bea48e5e850ab4cafbe68d3765cdaba13a86d6f
           curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
       - run: make TARGET=win32 CC=gcc
       - run: VLR=./vlr.exe sh tests/run.sh
@@ -58,6 +60,7 @@ jobs:
           git clone https://github.com/mpx/lua-cjson ../lua-cjson && git -C ../lua-cjson checkout -q 718f27293a981fb5e9e662e9aec0b7cf78317da6
           git clone --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
           git clone https://github.com/LoupVaillant/Monocypher ../Monocypher && git -C ../Monocypher checkout -q ab2b16dd619ad5f6979a4fbe69cfa324a6fcc35f
+          git clone https://www.bearssl.org/git/BearSSL ../BearSSL && git -C ../BearSSL checkout -q 7bea48e5e850ab4cafbe68d3765cdaba13a86d6f
           curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
       - run: make TARGET=web web/vlr.js
       - run: VLR="node web/run.mjs" sh tests/run.sh
