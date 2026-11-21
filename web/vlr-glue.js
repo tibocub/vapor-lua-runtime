@@ -6,10 +6,11 @@
 //     print, printErr, onExit,          // stdout/stderr lines, exit code (0 = ok, 1 = a task failed)
 //     interactive: true,                // false: stdin is an empty stream (always readable, reads EOF)
 //   });
-//   vlr.sendInput("text\n");            // interactive only
+//   vlr.sendInput("text\n");            // interactive only: stdin bytes, and what vapor.input() decodes (a terminal's output)
+//   stdout: (byte|null) => void        // raw output bytes (terminal emulator) instead of print lines
 //
 // stdin: scripts wait with vapor.wait_fd(0) and then read; a read on an empty buffer returns EOF (a browser cannot block).
-export async function startVlr(createVlr, { files = {}, args, print, printErr, onExit, interactive = true, cols = 80, rows = 24 }) {
+export async function startVlr(createVlr, { files = {}, args, print, printErr, onExit, interactive = true, cols = 80, rows = 24, stdout = null }) {
   const input = [];
   const enc = new TextEncoder();
   const m = await createVlr({
@@ -18,7 +19,9 @@ export async function startVlr(createVlr, { files = {}, args, print, printErr, o
     printErr,
     vlrStdinReady: interactive ? () => input.length > 0 : () => true,
     onVlrExit: onExit,
-    preRun: [(mod) => mod.FS.init(() => (input.length ? input.shift() : null))],
+    vlrIn: input, // the console byte queue vapor.input() decodes (same bytes as stdin)
+    // stdout: a byte callback instead of lines, for a terminal emulator (null at flush time)
+    preRun: [(mod) => mod.FS.init(() => (input.length ? input.shift() : null), stdout, stdout && ((b) => b && console.error(String.fromCharCode(b & 0xff))))],
   });
   for (const [path, data] of Object.entries(files)) {
     const dir = path.slice(0, path.lastIndexOf("/"));

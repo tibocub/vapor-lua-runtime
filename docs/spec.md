@@ -262,3 +262,10 @@ Image rebuilt with vtinput, `vapor.input` and `VLR_STRIP_INTERNAL=1`; flashed. `
 Real console path over USB CDC: `vapor.input(true)` received a char, an Up arrow and an SGR mouse press typed from the host
 (`EV char,a / key,up,0 / mouse,press,1,5,6,0`). Lua heap at start of a script: 31.8 KB (before/after the strip not measured on the board;
 host: 40.5 -> 37.0 KB). Also passing on the board afterwards: `fs` (from /flash), `exec`, `exec54`, `modules`, `fd` (needs `< /dev/null`: a console is never readable), and lfs's own suite (`Ok!`, needs `/tmp`: `mkdir /tmp` first). The stale corrupted `/flash/t` entry is gone.
+
+### Browser terminal (wterm)
+
+`web/term.html` + `web/term.js` (bundle with `web/build.sh`, needs bun): vlr in a wterm terminal. stdout bytes go to the terminal;
+its output bytes are the stdin queue and the escape sequences `vapor.input()` decodes (wasm `vlr_console_read` reads `Module.vlrIn`), so keys,
+mouse and resize behave as on a native tty; resize goes through `vlr.resize`. `?script=<url>` loads a script, `?dialect=5.4` selects plain 5.4.
+Verified: output renders in headless Firefox, byte-level input path in Node (`web/ev-test.mjs`); typing into wterm itself not tried by hand.

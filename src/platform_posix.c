@@ -124,7 +124,6 @@ int vlr_console_size(int *cols, int *rows)
     return 0;
 }
 #else
-int vlr_console_read(char *buf, int n) { (void)buf; (void)n; return 0; }
 int vlr_console_raw(int enable) { (void)enable; return 0; }
 #endif
 
