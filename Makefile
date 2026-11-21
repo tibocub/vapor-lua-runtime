@@ -72,7 +72,8 @@ $(OBJDIR)/%.o: $(GEN)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(addprefix $(OBJDIR)/,$(notdir $(LUASRC:.c=.o))): CFLAGS += $(LUADEF) -include vlr_lua.h
-$(addprefix $(OBJDIR)/,$(notdir $(MODSRC:.c=.o))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
+# third-party module sources are built as their authors expect (no -std, warnings off); our own (./...) keep the strict flags
+$(addprefix $(OBJDIR)/,$(notdir $(filter-out ./%,$(MODSRC:.c=.o)))): CFLAGS := $(filter-out -std=c99,$(CFLAGS)) -D_GNU_SOURCE -w $(MODFLAGS)
 $(OBJDIR)/platform_posix.o: CFLAGS := $(filter-out -std=c99,$(CFLAGS))
 ifneq ($(filter wasm web,$(TARGET)),)
 $(OBJDIR)/platform_posix.o: CFLAGS += -DVLR_POSIX_NO_WAIT

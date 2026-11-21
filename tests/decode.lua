@@ -1,5 +1,6 @@
--- terminal input decoder (vapor.decode): chars, keys, modifiers, mouse, split sequences
-local function ev(s) return vapor.decode(s) end
+-- terminal input decoder (module vapor.term): chars, keys, modifiers, mouse, split sequences
+local term = require("vapor.term")
+local function ev(s) return term.decode(s) end
 local function same(got, want)
   assert(#got == #want, "count " .. #got .. " vs " .. #want)
   for i, w in ipairs(want) do
@@ -38,9 +39,9 @@ same(ev("\xac"), {{"char", "\xe2\x82\xac"}})
 
 -- a lone ESC only comes out of the flush
 same(ev("\27"), {})
-assert(vapor.decode_pending() == true)
-same(vapor.decode_flush(), {{"key", "escape", 0}})
-assert(vapor.decode_pending() == false)
+assert(term.decode_pending() == true)
+same(term.decode_flush(), {{"key", "escape", 0}})
+assert(term.decode_pending() == false)
 
 -- garbage must not wedge the decoder
 same(ev("\27[999999999999;1;1;1;1;1;1Z"), {{"key", "tab", 1}})

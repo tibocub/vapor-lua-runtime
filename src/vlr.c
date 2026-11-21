@@ -8,7 +8,6 @@
 #include "lualib.h"
 #include "vlr.h"
 #include "vlr_platform.h"
-#include "vtinput.h"
 
 extern int vlr_dotzero; /* patched into lobject.c, see patches/ */
 
@@ -99,156 +98,6 @@ static int l_wait(lua_State *L)
     return 1;
 }
 
-/* ---- input events: terminal bytes -> {name, args...} tuples (see lua/sched.lua vapor.input) ---- */
-
-static void push_event(lua_State *L, const vtev *e, int *n)
-{
-    lua_newtable(L);
-    if (e->type == VT_CHAR) {
-        lua_pushstring(L, "char");
-        lua_rawseti(L, -2, 1);
-        lua_pushstring(L, e->text);
-        lua_rawseti(L, -2, 2);
-    } else if (e->type == VT_KEY) {
-        lua_pushstring(L, "key");
-        lua_rawseti(L, -2, 1);
-        lua_pushstring(L, e->code ? vtinput_keyname(e->code) : e->text);
-        lua_rawseti(L, -2, 2);
-        lua_pushinteger(L, e->mods);
-        lua_rawseti(L, -2, 3);
-    } else {
-        static const char *const act[] = {"", "press", "release", "drag", "move", "scroll_up", "scroll_down"};
-
-        lua_pushstring(L, "mouse");
-        lua_rawseti(L, -2, 1);
-        lua_pushstring(L, act[e->action]);
-        lua_rawseti(L, -2, 2);
-        lua_pushinteger(L, e->code);
-        lua_rawseti(L, -2, 3);
-        lua_pushinteger(L, e->x);
-        lua_rawseti(L, -2, 4);
-        lua_pushinteger(L, e->y);
-        lua_rawseti(L, -2, 5);
-        lua_pushinteger(L, e->mods);
-        lua_rawseti(L, -2, 6);
-    }
-    lua_rawseti(L, -2, ++*n);
-}
-
-/* vapor.decode(bytes) -> array of event tuples; the decoder keeps state between calls (split escape sequences) */
-static int l_decode(lua_State *L)
-{
-    vtinput *d = lua_touserdata(L, lua_upvalueindex(1));
-    size_t len, i;
-    const char *s = luaL_checklstring(L, 1, &len);
-    int n = 0;
-    vtev e;
-
-    lua_newtable(L);
-    for (i = 0; i < len; i++) {
-        if (vtinput_feed(d, (unsigned char)s[i], &e)) push_event(L, &e, &n);
-    }
-    return 1;
-}
-
-/* vapor.decode_flush() -> array: reports a pending lone ESC as the Escape key; drops half a sequence */
-static int l_decode_flush(lua_State *L)
-{
-    vtinput *d = lua_touserdata(L, lua_upvalueindex(1));
-    int n = 0;
-    vtev e;
-
-    lua_newtable(L);
-    if (vtinput_flush(d, &e)) push_event(L, &e, &n);
-    return 1;
-}
-
-static int l_decode_pending(lua_State *L)
-{
-    lua_pushboolean(L, vtinput_pending(lua_touserdata(L, lua_upvalueindex(1))));
-    return 1;
-}
-
-/* vapor.console_read(max) -> bytes ("" if none yet) or nil at end of input */
-static int l_console_read(lua_State *L)
-{
-    char buf[256];
-    int n = (int)luaL_optinteger(L, 1, (lua_Integer)sizeof buf), r;
-
-    if (n > (int)sizeof buf) n = (int)sizeof buf;
-    r = vlr_console_read(buf, n);
-    if (r < 0) { lua_pushnil(L); return 1; }
-    lua_pushlstring(L, buf, (size_t)r);
-    return 1;
-}
-
-static int l_console_raw(lua_State *L)
-{
-    lua_pushboolean(L, vlr_console_raw(lua_toboolean(L, 1)) == 0);
-    return 1;
-}
-
-static int l_console_size(lua_State *L)
-{
-    int c, r;
-
-    if (vlr_console_size(&c, &r) != 0) { lua_pushnil(L); return 1; }
-    lua_pushinteger(L, c);
-    lua_pushinteger(L, r);
-    return 2;
-}
-
-static int fail(lua_State *L)
-{
-    lua_pushnil(L);
-    lua_pushstring(L, vlr_last_error());
-    return 2;
-}
-
-static int list_cb(void *ud, const char *name)
-{
-    lua_State *L = ud;
-    lua_pushstring(L, name);
-    lua_rawseti(L, -2, (lua_Integer)lua_rawlen(L, -2) + 1);
-    return 0;
-}
-
-static int l_list(lua_State *L)
-{
-    const char *path = luaL_checkstring(L, 1);
-    lua_newtable(L);
-    return vlr_fs_list(path, list_cb, L) == 0 ? 1 : (lua_pop(L, 1), fail(L));
-}
-
-static int l_mkdir(lua_State *L)
-{
-    if (vlr_fs_mkdir(luaL_checkstring(L, 1)) != 0) return fail(L);
-    lua_pushboolean(L, 1);
-    return 1;
-}
-
-static int l_rmdir(lua_State *L)
-{
-    if (vlr_fs_rmdir(luaL_checkstring(L, 1)) != 0) return fail(L);
-    lua_pushboolean(L, 1);
-    return 1;
-}
-
-static int l_stat(lua_State *L)
-{
-    vlr_stat st;
-
-    if (vlr_fs_stat(luaL_checkstring(L, 1), &st) != 0) return fail(L);
-    lua_createtable(L, 0, 3);
-    lua_pushstring(L, st.is_dir ? "dir" : "file");
-    lua_setfield(L, -2, "type");
-    lua_pushinteger(L, (lua_Integer)st.size);
-    lua_setfield(L, -2, "size");
-    lua_pushinteger(L, (lua_Integer)st.mtime);
-    lua_setfield(L, -2, "mtime");
-    return 1;
-}
-
 static void setcaps(lua_State *L)
 {
     static const struct { const char *name; uint32_t bit; } caps[] = {
@@ -292,12 +141,20 @@ static int strip(lua_State *L, const char *name)
 }
 #endif
 
-static int runembedded(lua_State *L, const unsigned char *src, unsigned int len, const char *name)
+/* loads an embedded Lua chunk (stripped when VLR_STRIP_INTERNAL) and leaves the function on the stack; used by the
+   generated module registry for Lua-file modules */
+int vlr_load_embedded(lua_State *L, const unsigned char *src, size_t len, const char *name)
 {
     if (luaL_loadbuffer(L, (const char *)src, len, name)) return 1;
 #if VLR_STRIP_INTERNAL
     if (strip(L, name)) return 1;
 #endif
+    return 0;
+}
+
+static int runembedded(lua_State *L, const unsigned char *src, unsigned int len, const char *name)
+{
+    if (vlr_load_embedded(L, src, len, name)) return 1;
     return lua_pcall(L, 0, 0, 0);
 }
 
@@ -324,7 +181,6 @@ extern const char *const vlr_builtin[]; /* NULL-terminated names of the compiled
 
 lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
 {
-    static const luaL_Reg fs[] = {{"list", l_list}, {"mkdir", l_mkdir}, {"rmdir", l_rmdir}, {"stat", l_stat}, {NULL, NULL}};
     lua_State *L = alloc ? lua_newstate(alloc, ud) : luaL_newstate();
 
     if (L == NULL) return NULL;
@@ -342,27 +198,7 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
     lua_setfield(L, -2, "now");
     lua_pushcfunction(L, l_wait);
     lua_setfield(L, -2, "wait");
-    lua_newtable(L);
-    luaL_setfuncs(L, fs, 0);
-    lua_setfield(L, -2, "fs");
     setcaps(L);
-    {
-        vtinput *d = lua_newuserdatauv(L, sizeof *d, 0);
-        static const luaL_Reg decfuncs[] = {{"decode", l_decode}, {"decode_flush", l_decode_flush}, {"decode_pending", l_decode_pending}, {NULL, NULL}};
-
-        vtinput_init(d);
-        lua_pushvalue(L, -1);
-        lua_pushvalue(L, -3); /* vapor table */
-        lua_insert(L, -2);
-        luaL_setfuncs(L, decfuncs, 1); /* the decoder is the shared upvalue of the three functions */
-        lua_pop(L, 2);        /* userdata and the vapor copy */
-    }
-    lua_pushcfunction(L, l_console_read);
-    lua_setfield(L, -2, "console_read");
-    lua_pushcfunction(L, l_console_raw);
-    lua_setfield(L, -2, "console_raw");
-    lua_pushcfunction(L, l_console_size);
-    lua_setfield(L, -2, "console_size");
     lua_pushstring(L, dialect51 ? "5.1" : "5.4");
     lua_setfield(L, -2, "dialect");
     lua_pushstring(L, VLR_VERSION);

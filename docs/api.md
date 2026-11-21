@@ -4,7 +4,7 @@ Stability: **stable** = frozen at 0.2 (semantic versioning on `vapor.version`; b
 **experimental** = may change, graduates after real use. **internal** = used by the embedded Lua code, not part of the API.
 Until 0.2 everything is technically experimental; the marks below are the intent. Tests in `tests/` are the executable spec.
 
-All functions live on the global `vapor` table (it becomes a lazy facade over optional modules in 0.2, names unchanged).
+All functions live on the global `vapor` table, which is a lazy facade: `vapor.fs`, `vapor.input` (and `vapor.size`) load their optional modules on first access, and are `nil` in a build without them. `require("vapor.fs")` works too.
 "Task" = a coroutine started with `vapor.spawn`, or the main script, which is itself a task.
 
 ## Identity
@@ -32,15 +32,15 @@ All functions live on the global `vapor` table (it becomes a lazy facade over op
 | `vapor.failed()` | stable | true if any task died with an error (the script exit status uses it) |
 | `vapor.now()` | stable | monotonic milliseconds |
 
-## Console and input events
+## Console and input events (optional modules `vapor.input` and `vapor.term`)
 
 | call | | meaning |
 |---|---|---|
 | `vapor.input(true \| {mouse=0\|1\|2})` | stable | raw console; events arrive through `vapor.pull`. `mouse`: 0 none, 1 clicks and drags, 2 also motion. `vapor.input(false)` restores the console (also restored on exit) |
 | events | stable | `"char", text` · `"key", name, mods` (1 shift, 2 alt, 4 ctrl) · `"mouse", action, button, x, y, mods` (press, release, drag, move, scroll_up, scroll_down; 1-based) · `"resize", cols, rows` · `"quit"` when input ends |
 | `vapor.size()` | stable | `cols, rows` of the console, or `nil` |
-| `vapor.console_read/raw/size` | internal | the platform calls behind `input`/`size` |
-| `vapor.decode`, `decode_flush`, `decode_pending` | internal | terminal byte decoder (tested in `tests/decode.lua`) |
+| `require("vapor.term")` | internal | `console_read/raw/size` and `decode*`: the platform calls and byte decoder behind `input` (tested in `tests/decode.lua`) |
+| `vapor._after(ms, fn)`, `vapor._source(fd, fn)` | internal | loop hooks for optional modules |
 
 Key names: `up down left right home end insert delete pageup pagedown enter tab backspace escape f1..f12 space`, or the ASCII letter for Ctrl/Alt combinations.
 While `input` is on, the console belongs to the events: do not also read it with `io.read` or `wait_fd(0)`.

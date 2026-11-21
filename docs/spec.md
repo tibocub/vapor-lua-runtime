@@ -312,3 +312,15 @@ Not built yet: the vpm side (a device-aware resolver that reads `vapor.builtin` 
 `make DYNAMIC=1` (posix hosts only) builds with `LUA_USE_DLOPEN`, links `-ldl -Wl,-E` (not static), and reports `vapor.caps.dlopen == true`;
 `require` then also finds `.so` files on `package.cpath`. The default build stays static with no dlopen (NuttX, wasm, Windows cannot).
 Test: `sh tests/dynamic/run.sh`. Windows `.dll` loading is not done (Lua's loadlib would need `LoadLibrary` and an exported API).
+
+## Module system, first cut (2026-11-21)
+
+`modules.conf` now also lists the optional parts of the vapor API: `vapor.fs` (`src/mod_fs.c`), `vapor.term` (`src/mod_term.c` + the decoder in
+`src/vtinput.c`) and `vapor.input` (`lua/input.lua`, a Lua-file module: `name lua:path`, embedded by `tools/mkmodules`). `@VLR@` in a path is the
+folder of `modules.conf`. A build lists the modules it wants (`MODULES=...`, empty = all); one without `vapor.fs` simply has `vapor.fs == nil`.
+The global `vapor` table is a lazy facade: `vapor.<name>` loads the registered module `vapor.<name>` on first access (only compiled-in
+modules count, no file search); `vapor.size` stays as an alias into `vapor.term`. The core now only has tasks, timers, events, `now`, `wait`,
+`caps`, identity. Optional modules reach the loop through two hooks in `lua/sched.lua`: `vapor._after(ms, fn)` and `vapor._source(fd, fn)`
+(a persistent readable-handle callback; `vapor.input` uses it for the console, `vapor.net` will for sockets).
+Heap at start of a script (host, same one-line script): 46.1 KB before the split, 44.2 KB after (40.3 KB with the internal Lua stripped).
+Still to do for 0.2: app manifest check, rockspec reading in `vlr-build`, the 5.1 C-API shims test with more real rocks.
