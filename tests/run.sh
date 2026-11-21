@@ -2,7 +2,10 @@
 # Runs every tests/*.lua twice: the normal loop and --step (loop driven from C like a browser host would).
 # VLR overrides the command (e.g. VLR="wine ./vlr.exe"). A test starting with `--! dialect 5.4` runs as plain 5.4.
 cd "$(dirname "$0")/.." || exit 1
-VLR=${VLR:-./vlr}
+if [ -z "$VLR" ]; then
+  case $(uname -s) in MINGW*|MSYS*|CYGWIN*) VLR=./vlr.exe ;; *) VLR=./vlr ;; esac
+  [ -f "$VLR" ] || { echo "no $VLR here: build first (make, or make TARGET=win32 CC=gcc)"; exit 1; }
+fi
 fail=0
 for t in tests/*.lua; do
   opt=

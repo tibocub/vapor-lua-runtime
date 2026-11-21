@@ -1,42 +1,43 @@
-# Testing vlr on real Windows
+# Windows test instructions (written for an LLM or a person on the Windows PC)
 
-Everything below was only run under wine so far; what wine cannot show is marked **(real console)**.
+Goal: build vlr on real Windows, run every automated check, and send the results back as a file in the repo. Do **not** change source
+files unless a step below says so; if something fails, the report is the deliverable, not a fix. (If you do fix something, say exactly what and why in
+the report and commit it separately.)
 
-## Build
-MSYS2 (mingw64 shell, `pacman -S make mingw-w64-x86_64-gcc`), from the repo root. The sibling checkouts of lfs, lpeg and lua-cjson are
-expected next to the repo (`EXT`, default `..`):
+## 0. What you need
+Windows 10 or newer and **MSYS2** (https://www.msys2.org). Open the **"MSYS2 MinGW 64-bit"** shell (not "MSYS2 MSYS", not PowerShell, not Git Bash). Install:
 
-    make TARGET=win32 CC=gcc          # vlr.exe, static, with lfs + lpeg + cjson
-    make TARGET=win32 CC=gcc MODULES=lfs
+    pacman -S --needed make git curl tar mingw-w64-x86_64-gcc
 
-(The Makefile defaults `CC` to the cross compiler `x86_64-w64-mingw32-gcc`; inside MSYS2 pass `CC=gcc`.)
+Get the repo up to date (the user pushes from the Linux side):
 
-## Automated suite
-    VLR=./vlr.exe sh tests/run.sh        # Git Bash or the MSYS2 shell
+    git clone https://github.com/tibocub/vapor-lua-runtime   # first time
+    cd vapor-lua-runtime && git pull                          # later times
 
-Expected: every line `ok`; under wine the whole suite passed. Things to look at on real Windows: `fs.lua` (paths, UTF-8 names, `rmdir`),
-`exec*.lua` (`os.execute` through `cmd.exe`: status codes), `fd.lua` (stdin handle 0 as console, pipe and file).
+## 1. Run the one command
+From the repo root, in the MinGW64 shell:
 
-## Console suite (ConPTY, automated)
-    sh tests/win32/run.sh                # builds build/conpty.exe, runs vlr.exe inside a real Windows pseudo console
+    sh tests/win/report.sh
 
-`tests/win32/conpty.c` is the Windows twin of `tests/pty/run.py`: it feeds keystrokes as VT bytes and reads what the program wrote.
-It covers manual checks 1 (keys, Ctrl+Right, ESC, resize), 2 (console restored: cooked read with echo), 3, 4 and 5.
-**Not covered: mouse.** Through a ConPTY the SGR mouse bytes never reach `vapor.input({mouse=1})` (the mode sequences are not even
-passed on), so mouse stays a manual check in Windows Terminal and conhost. Hypothesis to try there: quick-edit mode
-(`ENABLE_EXTENDED_FLAGS` without `ENABLE_QUICK_EDIT_MODE`) may need to be off for clicks to arrive.
+It clones the three native-module sources next to the repo (pinned versions), builds `vlr.exe`, runs `tests/run.sh` and the ConPTY console suite
+(`tests/win32/run.sh`), prints everything, and writes it to `reports/windows-<date>.txt`. It waits for Enter at the end, so the window does not
+vanish. If it stops early with `MISSING TOOL` or `ABORT`, fix that (the message says how) and run it again.
 
-Found by it on real Windows, fixed in `src/platform_win32.c`: a resize left a record in the console input that made `vlr_wait` report
-"readable" while `ReadFile` blocked (the program hung after any resize); `print("é")` showed mojibake on a console (now the UTF-8
-output code page for the process, restored at exit).
+## 2. Send the result back
+    git add reports
+    git commit -m "Windows report"
+    git push
 
-## Manual checks (real console)
-Checks 2-5 are automated above; what is left by hand is the mouse in item 1 and a look at a real window.
-In Windows Terminal AND in classic conhost (cmd.exe window):
+Then reply with: the report file name, the `SUMMARY` line, and the full text of every line that starts with `FAIL` (and the few lines after it).
 
-1. `vlr.exe tests/pty/events.lua` : press letters, arrows, Ctrl+Right, F-keys, click and scroll the mouse, resize the window, type `q`.
-   Each should print one `EV ...` line (`char,a`, `key,up,0`, `key,right,4`, `mouse,press,1,x,y,0`, `resize,cols,rows`). Report which ones are missing.
-2. After `q` the console must be back to normal (echo on, line editing, no mouse reporting).
-3. `echo hello | vlr.exe -e` is not supported; instead check `echo print(io.read("l")) > t.lua & echo hi | vlr.exe t.lua` prints `hi`.
-4. Non-ASCII: a script that prints `"é€"` and one that reads a file named `é.txt` via `vapor.fs.list`.
-5. Ctrl+C inside `vapor.input(true)` arrives as `key,c,4` (the app decides), outside it ends the program.
+## 3. What the checks cover (for reference)
+- `tests/run.sh`: every `tests/*.lua` in normal and `--step` mode, app folders, `os.exit`; includes `tests/net.lua` (Winsock loopback: TCP, UDP, large
+  transfer, timeouts), `fs.lua` (paths, `rmdir`), `exec*.lua` (`os.execute` through `cmd.exe`), `fd.lua`.
+- `tests/win32/run.sh`: vlr.exe inside a real Windows pseudo console (keys, Ctrl+Right, ESC, resize, console restored, pipe stdin, UTF-8, Ctrl+C).
+- Not automatable: the **mouse** in `vapor.input({mouse=1})`. If a human is at the machine: run `./vlr.exe tests/pty/events.lua` in Windows Terminal and in a
+  classic cmd.exe window, click and scroll, resize, then type `q`; note which `EV mouse,...` lines appear. Put the answer in the reply.
+
+## Manual notes from earlier rounds
+- Found and fixed earlier on real Windows: a console resize left a record that made `vlr_wait` report "readable" while `ReadFile` blocked; `print("é")` showed
+  mojibake on a console (output code page is now UTF-8 for the process).
+- Known open: with a console and a socket waited on together, polling is in 10 ms slices (sockets alone wait exactly).
