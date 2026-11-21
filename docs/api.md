@@ -70,4 +70,4 @@ Experimental; see [net.md](net.md). `vapor.caps.net` says whether the build and 
 
 ## Not yet (planned, experimental when they appear)
 
-TLS, `vapor.spawn_process` (subprocess with pipes), `vapor.worker`, `vapor.gfx`, application manifests, `vapor.sandbox`.
+TLS, `vapor.spawn_process` (subprocess with pipes), `vapor.worker`, `vapor.gfx`, `vapor.sandbox`, `std.socket` (luasocket API).
