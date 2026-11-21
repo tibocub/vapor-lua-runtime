@@ -1,0 +1,85 @@
+vlr Windows report Sat, Nov 21, 2026  3:31:33 PM
+commit: 257e8ad (TLS on Windows reads the system certificate store (vlr_system_roots); report.sh checks https)
+system: MINGW64_NT-10.0-19045 PCTIBO 3.6.10-9a6cbe55.x86_64 2026-07-16 20:47 UTC x86_64 Msys
+shell: MINGW64  gcc: gcc.exe (Rev8, Built by MSYS2 project) 15.2.0  make: GNU Make 4.4.1
+Host key verification failed.
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+../BearSSL
+../lpeg-1.1.0
+../lua-cjson
+../luafilesystem
+../Monocypher
+../vaporUI
+
+== build vlr.exe
+-- exit 0
+vlr.exe: identity ok
+
+== suite (tests/run.sh)
+ok   tests/compat51.lua 
+ok   tests/compat51.lua --step
+ok   tests/decode.lua 
+ok   tests/decode.lua --step
+ok   tests/dialect54.lua 
+ok   tests/dialect54.lua --step
+ok   tests/events.lua 
+ok   tests/events.lua --step
+ok   tests/exec.lua 
+ok   tests/exec.lua --step
+ok   tests/exec54.lua 
+ok   tests/exec54.lua --step
+ok   tests/fd.lua 
+ok   tests/fd.lua --step
+ok   tests/fs.lua 
+ok   tests/fs.lua --step
+ok   tests/http.lua 
+ok   tests/http.lua --step
+ok   tests/identity.lua 
+ok   tests/identity.lua --step
+ok   tests/keys.lua 
+ok   tests/keys.lua --step
+ok   tests/manifest.lua 
+ok   tests/manifest.lua --step
+ok   tests/modules.lua 
+ok   tests/modules.lua --step
+ok   tests/net.lua 
+ok   tests/net.lua --step
+ok   tests/record.lua 
+ok   tests/record.lua --step
+ok   tests/repl.lua 
+ok   tests/repl.lua --step
+ok   tests/sched.lua 
+ok   tests/sched.lua --step
+ok   tests/sign.lua 
+ok   tests/sign.lua --step
+ok   tests/socket.lua 
+ok   tests/socket.lua --step
+ok   tests/tls.lua 
+ok   tests/tls.lua --step
+ok   app folder
+ok   app refused
+ok   os.exit
+ok   -e
+ok   prompt
+-- exit 0
+
+== ConPTY console suite
+ok   events (keys, escape, resize)
+SKIP mouse events through ConPTY (check by hand, docs/windows-test.md)
+ok   console restored (cooked read, echo)
+ok   stdin pipe
+ok   utf8 (console)
+ok   utf8 (pipe)
+ok   ctrl+c inside vapor.input
+ok   ctrl+c outside vapor.input ends the program
+-- exit 0
+
+== https through the Windows certificate store
+FAIL certificate is not trusted (unknown issuer)
+refused: certificate expired or not yet valid
+-- exit 0
+
+SUMMARY: 0 failing step(s). Lines starting with FAIL above say which checks.

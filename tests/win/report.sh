@@ -35,6 +35,7 @@ main() {
   ls -d ../BearSSL ../Monocypher ../vaporUI ../luafilesystem ../lua-cjson ../lpeg-1.1.0
 
   step "build vlr.exe" make TARGET=win32 CC=gcc
+  [ "$FAILS" = 0 ] || { echo "ABORT: the build failed (see above); the tests would run an old vlr.exe"; return 1; }
   [ -f vlr.exe ] || { echo "ABORT: no vlr.exe, the build failed (see above)"; return 1; }
   echo "vlr.exe: $(./vlr.exe tests/identity.lua && echo identity ok)"
   step "suite (tests/run.sh)" env VLR=./vlr.exe sh tests/run.sh
