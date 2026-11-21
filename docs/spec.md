@@ -277,3 +277,9 @@ with the registry) let a package manager see what the device already satisfies; 
 `package.preload` in sync. `tools/vlr-build [profile]` builds a vlr with a chosen module set for a target from a small `key = value`
 profile (`tools/mini.vlrprofile`: posix, lfs only: 324 KB vs 395 KB with everything); `--list` shows the modules in `modules.conf`.
 Not built yet: the vpm side (a device-aware resolver that reads `vapor.builtin` and asks `vlr-build` for missing native modules).
+
+## Dynamic modules (optional)
+
+`make DYNAMIC=1` (posix hosts only) builds with `LUA_USE_DLOPEN`, links `-ldl -Wl,-E` (not static), and reports `vapor.caps.dlopen == true`;
+`require` then also finds `.so` files on `package.cpath`. The default build stays static with no dlopen (NuttX, wasm, Windows cannot).
+Test: `sh tests/dynamic/run.sh`. Windows `.dll` loading is not done (Lua's loadlib would need `LoadLibrary` and an exported API).

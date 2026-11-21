@@ -42,6 +42,12 @@ EXE      =
 PLATSRC  = src/platform_posix.c
 LUADEF   = -DLUA_USE_POSIX
 LIBS     = -lm
+ifneq ($(DYNAMIC),)
+# optional: require() can also load .so modules (package.cpath); the executable exports the Lua API for them
+LUADEF  += -DLUA_USE_DLOPEN
+LIBS    += -ldl -Wl,-E
+CFLAGS  += -DVLR_DLOPEN=1
+endif
 endif
 
 SRCS     = $(LUASRC) $(VLR_CORE_SRC) $(VLR_MAIN_SRC) $(PLATSRC) $(MODSRC) \

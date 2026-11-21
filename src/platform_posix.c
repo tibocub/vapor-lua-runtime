@@ -11,10 +11,14 @@
 
 #include "vlr_platform.h"
 
+#ifndef VLR_DLOPEN
+#define VLR_DLOPEN 0 /* make DYNAMIC=1 */
+#endif
+
 #ifndef VLR_POSIX_NO_WAIT /* wasm brings its own vlr_caps and a non-blocking vlr_wait */
 uint32_t vlr_caps(void)
 {
-    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC;
+    return VLR_CAP_FS | VLR_CAP_TTY | VLR_CAP_EXEC | (VLR_DLOPEN ? VLR_CAP_DLOPEN : 0);
 }
 #endif
 
