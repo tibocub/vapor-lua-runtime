@@ -102,6 +102,14 @@ Constraint that makes both work: **a native module is written against the public
 `lauxlib.h`, no internal headers, no globals shared with the runtime), so one source builds either way.
 Lookup order: preload, then `package.path`, then `package.cpath` (if enabled).
 
+### Bundling a C rock into the runtime
+
+Any C rock vpm can build can also be compiled **into** vlr instead of installed as a `.so` (the only way on NuttX, and the way to ship one self-contained binary):
+`vpm bundle lbase64 lpeg ... --dir=D` fetches each source rock (size and sha256 checked against the signed index), unpacks it under `D/src` and writes `D/bundle.conf`,
+one `modules.conf` line per C module; then `make CONF_EXTRA=D/bundle.conf` appends those lines to `modules.conf` for that build. Same plan, same headers (`lauxlib.h`
+includes the Lua 5.1 C API names, see `patches/lua-api51.patch`), so a rock that loads as a `.so` links statically too. Not yet: rocks that need a system library other than
+`m`, `dl`, `pthread` (the library would have to be linked by hand), and the Lua files of the rock (those still come from `vpm i` or `./lua_modules`).
+
 ## Who manages native modules: two tools, one record format
 
 - **`vlr-build` (host, build time, needs a compiler).** Reads `modules.conf`, compiles the chosen C modules into the
