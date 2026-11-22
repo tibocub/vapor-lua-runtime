@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "luaconf.h"
 #include "lua.h"
@@ -295,6 +296,81 @@ typedef struct luaL_Stream {
 /* }============================================================ */
 
 
+
+
+/*
+** vlr: the Lua 5.1 C API names that 5.4 dropped, for modules written for 5.1 (the default dialect; patches/lua-api51.patch).
+** Only what is missing is defined, each name guarded. Define VLR_NO_LUA51_API to hide all of it. Not provided: LUA_GLOBALSINDEX/LUA_ENVIRONINDEX
+** (pseudo-indices 5.4 does not have) and lua_getfenv/lua_setfenv: modules that use them do not compile, which is the honest answer.
+*/
+#if !defined(VLR_NO_LUA51_API)
+typedef luaL_Reg luaL_reg;
+#if !defined(lua_strlen)
+#define lua_strlen(L,i)		lua_rawlen(L, (i))
+#endif
+#if !defined(lua_objlen)
+#define lua_objlen(L,i)		lua_rawlen(L, (i))
+#endif
+#if !defined(lua_equal)
+#define lua_equal(L,a,b)	lua_compare(L, (a), (b), LUA_OPEQ)
+#endif
+#if !defined(lua_lessthan)
+#define lua_lessthan(L,a,b)	lua_compare(L, (a), (b), LUA_OPLT)
+#endif
+#if !defined(luaL_checkint)
+#define luaL_checkint(L,n)	((int)luaL_checkinteger(L, (n)))
+#define luaL_optint(L,n,d)	((int)luaL_optinteger(L, (n), (d)))
+#define luaL_checklong(L,n)	((long)luaL_checkinteger(L, (n)))
+#define luaL_optlong(L,n,d)	((long)luaL_optinteger(L, (n), (d)))
+#endif
+#define lua_open()		luaL_newstate()
+#define luaL_typerror(L,n,t)	luaL_typeerror(L, (n), (t))
+#define lua_getregistry(L)	lua_pushvalue(L, LUA_REGISTRYINDEX)
+
+/* luaL_openlib / luaL_register: the table is found or created as a global (dotted names nest) and recorded in package.loaded */
+static inline void vlr51_pushmodule(lua_State *L, const char *full) {
+  const char *name = full;
+  luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
+  lua_getfield(L, -1, name);
+  if (!lua_istable(L, -1)) {
+    const char *e;
+    lua_pop(L, 1);
+    lua_pushglobaltable(L);
+    while ((e = strchr(name, '.')) != NULL) {
+      lua_pushlstring(L, name, (size_t)(e - name));
+      if (lua_rawget(L, -2) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        lua_pushlstring(L, name, (size_t)(e - name));
+        lua_newtable(L);
+        lua_rawset(L, -3);
+        lua_pushlstring(L, name, (size_t)(e - name));
+        lua_rawget(L, -2);
+      }
+      lua_remove(L, -2);
+      name = e + 1;
+    }
+    lua_getfield(L, -1, name);
+    if (!lua_istable(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);
+      lua_pushvalue(L, -1);
+      lua_setfield(L, -3, name);
+    }
+    lua_remove(L, -2);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -3, full);
+  }
+  lua_remove(L, -2);
+}
+static inline void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
+  if (libname) {
+    vlr51_pushmodule(L, libname);
+    lua_insert(L, -(nup + 1));
+  }
+  if (l) luaL_setfuncs(L, l, nup); else lua_pop(L, nup);
+}
+#define luaL_register(L,n,l)	luaL_openlib(L, (n), (l), 0)
+#endif
 
 #endif
 

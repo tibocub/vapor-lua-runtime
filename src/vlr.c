@@ -220,6 +220,17 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
     lua_concat(L, 2);
     lua_setfield(L, -2, "path");
     lua_pop(L, 1);
+#else /* host builds: a project's own libraries, as installed by `vpm i` (like node_modules): ./lua_modules is searched before everything else */
+    lua_getglobal(L, "package");
+    lua_pushliteral(L, "./lua_modules/?.lua;./lua_modules/?/init.lua;");
+    lua_getfield(L, -2, "path");
+    lua_concat(L, 2);
+    lua_setfield(L, -2, "path");
+    lua_pushliteral(L, "./lua_modules/?.so;");
+    lua_getfield(L, -2, "cpath");
+    lua_concat(L, 2);
+    lua_setfield(L, -2, "cpath");
+    lua_pop(L, 1);
 #endif
 
     lua_newtable(L); /* vapor */

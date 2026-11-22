@@ -23,7 +23,23 @@ assert(os.execute(("cc -O2 %s -I%s/inc -o %s/nativehello.so %s/hello.c"):format(
 package.cpath = dir .. "/?.so;" .. package.cpath
 local m = require("nativehello")
 assert(m.add(2, 3) == 5, "the compiled module runs")
-os.execute("rm -rf " .. dir)
+
+-- a module written for the Lua 5.1 C API (luaL_register, luaL_reg, lua_objlen, luaL_checkint, lua_equal), as many old rocks are
+local g = assert(io.open(dir .. "/old.c", "wb"))
+g:write([[
+#include "lua.h"
+#include "lauxlib.h"
+static int len(lua_State *L) { lua_pushinteger(L, (lua_Integer)lua_objlen(L, 1) + luaL_checkint(L, 2)); return 1; }
+static int same(lua_State *L) { lua_pushboolean(L, lua_equal(L, 1, 2)); return 1; }
+static const luaL_reg funcs[] = { {"len", len}, {"same", same}, {NULL, NULL} };
+int luaopen_oldstyle_core(lua_State *L) { luaL_register(L, "oldstyle.core", funcs); return 1; }
+]])
+g:close()
+assert(os.execute(("cc -O2 -Wall -Werror %s -I%s/inc -o %s/oldstyle_core.so %s/old.c"):format(flags, dir, dir, dir)) == 0, "5.1 API module compiles warning-free")
+local old = assert(package.loadlib(dir .. "/oldstyle_core.so", "luaopen_oldstyle_core"))
+local m51 = old()
+assert(m51.len("abc", 4) == 7 and m51.same("x", "x") and not m51.same("x", "y"), "5.1 API shim works")
+assert(package.loaded["oldstyle.core"] == m51 and oldstyle.core == m51, "luaL_register records the module and sets the global like 5.1")
 
 -- the committed header module matches third_party/lua (when the tree is there)
 local real = io.open("third_party/lua/lua.h", "rb")
@@ -31,4 +47,5 @@ if real then
   assert(real:read("a") == headers.files["lua.h"], "lua/luaheaders.lua is stale: run make headers")
   real:close()
 end
+os.execute("rm -rf " .. dir)
 print("ok")
