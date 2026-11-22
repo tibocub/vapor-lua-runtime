@@ -12,8 +12,14 @@ GEN     ?= build
 TARGET  ?= posix
 # the target's half of a module (@PLAT@ in modules.conf): sockets are posix or win32; wasm has none
 VLR_PLAT ?= $(if $(filter win32,$(TARGET)),win32,$(if $(filter wasm web,$(TARGET)),none,posix))
+# CONF_EXTRA=file...: more module lines (what `vpm bundle` writes) appended to modules.conf for this build; @VLR@ is pinned to this checkout
+CONF    := modules.conf
+ifneq ($(CONF_EXTRA),)
+CONF    := $(GEN)/modules.all
+$(shell mkdir -p $(GEN) && sed 's#@VLR@#$(CURDIR)#g' modules.conf $(CONF_EXTRA) > $(CONF).tmp && { cmp -s $(CONF).tmp $(CONF) && rm $(CONF).tmp || mv $(CONF).tmp $(CONF); })
+endif
 uniq = $(if $(1),$(firstword $(1)) $(call uniq,$(filter-out $(firstword $(1)),$(1))))
-MODTOK  := $(shell VLR_PLAT=$(VLR_PLAT) sh tools/modsrc.sh modules.conf $(EXT) $(MODULES))
+MODTOK  := $(shell VLR_PLAT=$(VLR_PLAT) sh tools/modsrc.sh $(CONF) $(EXT) $(MODULES))
 MODSRC   = $(call uniq,$(filter-out -%,$(MODTOK)))
 MODFLAGS = $(filter -%,$(MODTOK))
 
@@ -107,9 +113,9 @@ build/modules.stamp: FORCE
 	@mkdir -p build
 	@echo '$(MODULES)' | cmp -s - $@ || echo '$(MODULES)' > $@
 FORCE:
-$(GEN)/vlr_modules.c: modules.conf build/mkmodules build/modules.stamp $(wildcard lua/*.lua)
+$(GEN)/vlr_modules.c: $(CONF) build/mkmodules build/modules.stamp $(wildcard lua/*.lua)
 	@mkdir -p $(GEN)
-	VLR_EXT=$(EXT) build/mkmodules modules.conf $(MODULES) > $@
+	VLR_EXT=$(EXT) build/mkmodules $(CONF) $(MODULES) > $@
 $(GEN)/%.c: lua/%.lua build/embed
 	@mkdir -p $(GEN)
 	build/embed $* $< > $@
