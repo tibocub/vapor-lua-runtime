@@ -309,8 +309,10 @@ Not built yet: the vpm side (a device-aware resolver that reads `vapor.builtin` 
 
 ## Dynamic modules (optional)
 
-`make DYNAMIC=1` (posix hosts only) builds with `LUA_USE_DLOPEN`, links `-ldl -Wl,-E` (not static), and reports `vapor.caps.dlopen == true`;
-`require` then also finds `.so` files on `package.cpath`. The default build stays static with no dlopen (NuttX, wasm, Windows cannot).
+Since 2026-11-22 the posix host build has dlopen by default (`LUA_USE_DLOPEN`, links `-ldl -Wl,-E`, `vapor.caps.dlopen == true`): `require` also finds `.so` files on `package.cpath`,
+which is how vpm loads the C rocks it builds. `make STATIC=1` gives the old static binary. NuttX, wasm and Windows have no dlopen.
+`vapor.luaheaders` (generated `lua/luaheaders.lua`, `make headers`) carries Lua's headers: `require("vapor.luaheaders").write(dir)` lets a compiler build a module against exactly this runtime.
+Test: `tests/native_module.lua` (writes the headers, compiles a C module, loads it).
 Test: `sh tests/dynamic/run.sh`. Windows `.dll` loading is not done (Lua's loadlib would need `LoadLibrary` and an exported API).
 
 ## Module system, first cut (2026-11-21)

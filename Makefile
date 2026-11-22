@@ -45,10 +45,14 @@ EXE      =
 PLATSRC  = src/platform_posix.c
 LUADEF   = -DLUA_USE_POSIX
 LIBS     = -lm -lpthread
-ifneq ($(DYNAMIC),)
-# optional: require() can also load .so modules (package.cpath); the executable exports the Lua API for them
+ifeq ($(STATIC),)
+# desktop default: require() can also load .so modules (package.cpath) that vpm builds from C rocks; the executable exports the Lua API for them. make STATIC=1 for a fully static binary
 LUADEF  += -DLUA_USE_DLOPEN
+ifeq ($(shell uname -s),Darwin)
+LIBS    += -ldl -Wl,-export_dynamic
+else
 LIBS    += -ldl -Wl,-E
+endif
 CFLAGS  += -DVLR_DLOPEN=1
 endif
 endif
@@ -109,6 +113,10 @@ $(GEN)/vlr_modules.c: modules.conf build/mkmodules build/modules.stamp $(wildcar
 $(GEN)/%.c: lua/%.lua build/embed
 	@mkdir -p $(GEN)
 	build/embed $* $< > $@
+
+# lua/luaheaders.lua is generated from third_party/lua/*.h (committed; tests/luaheaders.lua fails when it is stale)
+headers: vlr
+	./vlr tools/mkheaders.lua
 
 # generated C (embedded Lua, module registry) only; for builds driven by another build system
 gen: $(addprefix $(GEN)/,$(addsuffix .c,$(VLR_LUA_EMBED))) $(GEN)/vlr_modules.c
