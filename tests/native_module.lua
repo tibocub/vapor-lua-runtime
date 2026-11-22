@@ -41,6 +41,21 @@ local m51 = old()
 assert(m51.len("abc", 4) == 7 and m51.same("x", "x") and not m51.same("x", "y"), "5.1 API shim works")
 assert(package.loaded["oldstyle.core"] == m51 and oldstyle.core == m51, "luaL_register records the module and sets the global like 5.1")
 
+-- a rock that carries its own copy of what 5.1 had as functions (compat layers do): must compile and still raise the error (a dlopen'd module resolves to the runtime's copy, a bundled one links its own: the runtime's is weak)
+local h = assert(io.open(dir .. "/own.c", "wb"))
+h:write([[
+#include "lua.h"
+#include "lauxlib.h"
+int luaL_typerror(lua_State *L, int narg, const char *tname) { return luaL_error(L, "own typerror %d %s", narg, tname); }
+static int bad(lua_State *L) { return luaL_typerror(L, 1, "thing"); }
+int luaopen_ownmod(lua_State *L) { lua_pushcfunction(L, bad); return 1; }
+]])
+h:close()
+assert(os.execute(("cc -O2 -Wall -Werror %s -I%s/inc -o %s/ownmod.so %s/own.c"):format(flags, dir, dir, dir)) == 0, "module defining luaL_typerror compiles")
+local own = assert(package.loadlib(dir .. "/ownmod.so", "luaopen_ownmod"))()
+local okp, perr = pcall(own)
+assert(not okp and tostring(perr):find("thing expected", 1, true) or tostring(perr):find("own typerror 1 thing", 1, true), "typerror raises: " .. tostring(perr))
+
 -- the committed header module matches third_party/lua (when the tree is there)
 local real = io.open("third_party/lua/lua.h", "rb")
 if real then

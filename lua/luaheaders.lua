@@ -1657,52 +1657,12 @@ typedef luaL_Reg luaL_reg;
 #define luaL_optlong(L,n,d)	((long)luaL_optinteger(L, (n), (d)))
 #endif
 #define lua_open()		luaL_newstate()
-#define luaL_typerror(L,n,t)	luaL_typeerror(L, (n), (t))
 #define lua_getregistry(L)	lua_pushvalue(L, LUA_REGISTRYINDEX)
 
-/* luaL_openlib / luaL_register: the table is found or created as a global (dotted names nest) and recorded in package.loaded */
-static inline void vlr51_pushmodule(lua_State *L, const char *full) {
-  const char *name = full;
-  luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
-  lua_getfield(L, -1, name);
-  if (!lua_istable(L, -1)) {
-    const char *e;
-    lua_pop(L, 1);
-    lua_pushglobaltable(L);
-    while ((e = strchr(name, '.')) != NULL) {
-      lua_pushlstring(L, name, (size_t)(e - name));
-      if (lua_rawget(L, -2) != LUA_TTABLE) {
-        lua_pop(L, 1);
-        lua_pushlstring(L, name, (size_t)(e - name));
-        lua_newtable(L);
-        lua_rawset(L, -3);
-        lua_pushlstring(L, name, (size_t)(e - name));
-        lua_rawget(L, -2);
-      }
-      lua_remove(L, -2);
-      name = e + 1;
-    }
-    lua_getfield(L, -1, name);
-    if (!lua_istable(L, -1)) {
-      lua_pop(L, 1);
-      lua_newtable(L);
-      lua_pushvalue(L, -1);
-      lua_setfield(L, -3, name);
-    }
-    lua_remove(L, -2);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -3, full);
-  }
-  lua_remove(L, -2);
-}
-static inline void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
-  if (libname) {
-    vlr51_pushmodule(L, libname);
-    lua_insert(L, -(nup + 1));
-  }
-  if (l) luaL_setfuncs(L, l, nup); else lua_pop(L, nup);
-}
-#define luaL_register(L,n,l)	luaL_openlib(L, (n), (l), 0)
+/* functions in 5.1, not macros: rocks that carry their own copy (compat layers) must still compile, so these are weak definitions in lauxlib.c */
+LUALIB_API void (luaL_openlib) (lua_State *L, const char *libname, const luaL_Reg *l, int nup);
+LUALIB_API void (luaL_register) (lua_State *L, const char *libname, const luaL_Reg *l);
+LUALIB_API int (luaL_typerror) (lua_State *L, int narg, const char *tname);
 #endif
 
 #endif

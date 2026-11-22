@@ -1129,3 +1129,60 @@ LUALIB_API void luaL_checkversion_ (lua_State *L, lua_Number ver, size_t sz) {
                   (LUAI_UACNUMBER)ver, (LUAI_UACNUMBER)v);
 }
 
+
+/* vlr: Lua 5.1 module registration, for C modules written against the 5.1 API (see lauxlib.h). Weak: a module or bundle carrying its own copy wins. */
+#if defined(__GNUC__)
+#define VLR_WEAK __attribute__((weak))
+#else
+#define VLR_WEAK
+#endif
+
+static void vlr51_pushmodule (lua_State *L, const char *full) {
+  const char *name = full, *e;
+  luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
+  lua_getfield(L, -1, full);
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    lua_pushglobaltable(L);
+    while ((e = strchr(name, '.')) != NULL) {   /* dotted names nest global tables */
+      lua_pushlstring(L, name, (size_t)(e - name));
+      if (lua_rawget(L, -2) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        lua_pushlstring(L, name, (size_t)(e - name));
+        lua_newtable(L);
+        lua_rawset(L, -3);
+        lua_pushlstring(L, name, (size_t)(e - name));
+        lua_rawget(L, -2);
+      }
+      lua_remove(L, -2);
+      name = e + 1;
+    }
+    lua_getfield(L, -1, name);
+    if (!lua_istable(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);
+      lua_pushvalue(L, -1);
+      lua_setfield(L, -3, name);
+    }
+    lua_remove(L, -2);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -3, full);
+  }
+  lua_remove(L, -2);
+}
+
+VLR_WEAK LUALIB_API void (luaL_openlib) (lua_State *L, const char *libname, const luaL_Reg *l, int nup) {
+  if (libname) {
+    vlr51_pushmodule(L, libname);
+    lua_insert(L, -(nup + 1));
+  }
+  if (l) luaL_setfuncs(L, l, nup); else lua_pop(L, nup);
+}
+
+VLR_WEAK LUALIB_API void (luaL_register) (lua_State *L, const char *libname, const luaL_Reg *l) {
+  luaL_openlib(L, libname, l, 0);
+}
+
+VLR_WEAK LUALIB_API int (luaL_typerror) (lua_State *L, int narg, const char *tname) {
+  return luaL_typeerror(L, narg, tname);
+}
