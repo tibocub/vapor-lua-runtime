@@ -4,7 +4,8 @@ if os.execute("cc --version >/dev/null 2>&1") ~= 0 then print("skipped (no C com
 
 local headers = require("vapor.luaheaders")
 local fs = vapor.fs
-local dir = "native-test-" .. os.time()
+local dir = os.tmpname()   -- under the system temp folder, so a failed run leaves nothing in the checkout
+os.remove(dir)
 os.execute("mkdir -p " .. dir .. "/inc")
 assert(headers.write(dir .. "/inc"))
 for _, n in ipairs{ "lua.h", "luaconf.h", "lauxlib.h", "lualib.h" } do assert(io.open(dir .. "/inc/" .. n, "rb"), n):close() end
