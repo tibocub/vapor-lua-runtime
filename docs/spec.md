@@ -1,5 +1,7 @@
 # vlr: portable Lua runtime (vapor lua runtime)
 
+> Design record and measurements, kept as history. Current state: [status.md](status.md); structure: [architecture.md](architecture.md); plans: [roadmap.md](roadmap.md). Where this file disagrees with them, they win.
+
 Status (2026-11-21): **working runtime, version 0.2.** Runs the same conformance suite on Linux, Windows (including a real
 Windows pseudo-console suite), the browser (WASM, Node and Firefox), the NuttX simulator and the RP2040. Started 2026-11-19; extends
 and replaces `vlua` (vaporOS/vlua, which was a draft). Sections below that describe design are still the intent; the per-target
