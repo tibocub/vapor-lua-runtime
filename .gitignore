@@ -7,3 +7,4 @@ vlr.wasm
 web/vlr.js
 web/vlr.wasm
 reports/keys-last.txt
+native-test-*
