@@ -1637,7 +1637,7 @@ typedef struct luaL_Stream {
 ** (pseudo-indices 5.4 does not have) and lua_getfenv/lua_setfenv: modules that use them do not compile, which is the honest answer.
 */
 #if !defined(VLR_NO_LUA51_API)
-typedef luaL_Reg luaL_reg;
+#define luaL_reg luaL_Reg           /* a macro, so both `luaL_reg x[]` and `struct luaL_reg x[]` work */
 #if !defined(lua_strlen)
 #define lua_strlen(L,i)		lua_rawlen(L, (i))
 #endif

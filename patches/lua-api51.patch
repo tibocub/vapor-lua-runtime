@@ -1,5 +1,5 @@
 diff --git a/third_party/lua/lauxlib.h b/third_party/lua/lauxlib.h
-index 5b977e2..f5a3323 100644
+index 5b977e2..c0e25f1 100644
 --- a/third_party/lua/lauxlib.h
 +++ b/third_party/lua/lauxlib.h
 @@ -11,6 +11,7 @@
@@ -21,7 +21,7 @@ index 5b977e2..f5a3323 100644
 +** (pseudo-indices 5.4 does not have) and lua_getfenv/lua_setfenv: modules that use them do not compile, which is the honest answer.
 +*/
 +#if !defined(VLR_NO_LUA51_API)
-+typedef luaL_Reg luaL_reg;
++#define luaL_reg luaL_Reg           /* a macro, so both `luaL_reg x[]` and `struct luaL_reg x[]` work */
 +#if !defined(lua_strlen)
 +#define lua_strlen(L,i)		lua_rawlen(L, (i))
 +#endif
