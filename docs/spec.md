@@ -276,7 +276,7 @@ image, and a larger-script comparison between source and bytecode.
 ## Browser build (`make TARGET=web`)
 
 `web/vlr.js` + `web/vlr.wasm`: an ES module factory `createVlr()`. `web/vlr-glue.js` (`startVlr`) puts files in MEMFS, calls main, and
-feeds stdin; `web/index.html` is a playground (editor, dialect choice, output, input line). Serve `web/` with any static server.
+feeds stdin; `web/index.html` is a playground (editor, dialect choice, output, input line). `sh web/serve.sh` serves it (pages are listed in the script).
 No Asyncify and no threads: the loop is driven by JS timers calling `vlr_step`; input calls `vlr_wasm_wake`.
 Stdin rule: scripts wait with `vlr.wait_fd(0)` and then read; a read on an empty buffer returns EOF (a browser cannot block).
 `os.execute` is unavailable there (`vlr.caps.exec == false`). Each Run creates a fresh instance (one Lua state per run).
