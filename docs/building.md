@@ -11,7 +11,7 @@ Lua 5.4.8 itself is in `third_party/lua`, with the small patches in `patches/`.
 | `make` | `./vlr` for the host (Linux, macOS, BSD); dlopen enabled |
 | `make STATIC=1` | same without dlopen (no `.so` loading) |
 | `make TARGET=win32 CC=x86_64-w64-mingw32-gcc` | `vlr.exe` (MSYS2 or a cross compiler; tests run under wine) |
-| `make TARGET=web` | `web/vlr.js` + `web/vlr.wasm` (emscripten; no Asyncify, no threads) |
+| `make TARGET=web` | `web/vlr.js` + `web/vlr.wasm` (emscripten, Asyncify so scripts block like anywhere else; no threads). Under Node use `--liftoff-only`: V8's tier-up stalls the first sleep for about a second |
 | NuttX | built from the vaporOS repository, which includes this one (Kconfig chooses modules per board) |
 
 ## Choosing modules
@@ -27,7 +27,7 @@ The C API a module may use is Lua's public one, including the 5.1 names (`lauxli
 
 ## Tests
 - `make test` (or `sh tests/run.sh`): every `tests/*.lua`, each in the normal loop and in `--step` mode (loop driven from C like a browser host), plus the app, pty, rock, dynamic and TLS suites.
-  `VLR="wine ./vlr.exe" sh tests/run.sh` and `VLR="node web/run.mjs" sh tests/run.sh` run it on other targets.
+  `VLR="wine ./vlr.exe" sh tests/run.sh` and `VLR="node --liftoff-only web/run.mjs" sh tests/run.sh` run it on other targets.
 - `make check` (Linux, clang): strict `-std=c99 -pedantic -Werror` on our own code, then the suite under ASan and UBSan. Run `make clean` afterwards, or sanitizer objects leak into the normal build.
 - After regenerating `lua/luaheaders.lua` (`make headers`), build twice.
 - Hands-on only: [windows-test.md](windows-test.md) (real console), [tty-test.md](tty-test.md) (Linux virtual terminal).

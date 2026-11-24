@@ -1,16 +1,28 @@
 /*
- * vlr backend for WebAssembly (emscripten, no Asyncify). The browser cannot block, so vlr_wait never does: it
- * reports what is ready right now and the JS event loop calls back into vlr_step (via timers). Time, filesystem
- * (emscripten's MEMFS/NODERAWFS) come from platform_posix.c built with -DVLR_POSIX_NO_WAIT.
+ * vlr backend for WebAssembly (emscripten, built with -sASYNCIFY). The browser cannot block, so vlr_wait parks the wasm stack
+ * on a JS promise (a timer, or console input arriving) and the C code above stays synchronous, as on any other host. Time and
+ * the filesystem (emscripten's MEMFS/NODERAWFS) come from platform_posix.c built with -DVLR_POSIX_NO_WAIT.
+ * Terminal input and the screen are the vaporui module, on vaporUI's own wasm backend (Module.vui, see web/vlr-glue.js).
  */
 #include <emscripten.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "vlr.h"
 #include "vlr_platform.h"
 
-/* the page decides when console input is readable: Module.vlrStdinReady() (default: always, like /dev/null) */
+/* stdin (handle 0) is readable when the page says so: Module.vlrStdinReady() (default: always, like /dev/null) */
 EM_JS(int, js_stdin_ready, (void), { return Module.vlrStdinReady ? (Module.vlrStdinReady() ? 1 : 0) : 1; });
+
+/* wait up to ms (-1: until woken) for a timer or for Module.vlrWake(); resolves when either happens */
+EM_ASYNC_JS(void, js_sleep, (int ms), {
+  await new Promise((res) => {
+    let t = null;
+    const done = () => { if (t !== null) clearTimeout(t); Module.vlrWake = null; res(); };
+    Module.vlrWake = done;
+    if (ms >= 0) t = setTimeout(done, ms);
+  });
+});
 
 /* browsers: tell the page the script ended (Module.onVlrExit(code)); returns 0 when nobody listens (Node: exit) */
 EM_JS(int, js_exit, (int code), { if (Module.onVlrExit) { Module.onVlrExit(code); return 1; } return 0; });
@@ -26,68 +38,34 @@ void vlr_flush(void)
     js_flush_tty();
 }
 
-uint32_t vlr_caps(void) { return VLR_CAP_FS; }
+uint32_t vlr_caps(void) { return VLR_CAP_FS | VLR_CAP_TTY; }
 
 int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
 {
-    int i, count = 0;
+    int i, count = 0, watch0 = 0;
 
-    (void)timeout_ms; /* never sleeps: the JS timer that called us is the sleep */
-    for (i = 0; i < n; i++) count += (ready[i] = fds[i] == 0 && js_stdin_ready());
-    return count;
-}
-
-static lua_State *g_L;
-
-static void tick(void *unused)
-{
-    int next = -1, r;
-
-    (void)unused;
-    r = vlr_step(g_L, 0, &next);
-    if (r > 0) {
-        /* shortcut: when only waiting on input poll every 20 ms; the page should call vlr_wasm_wake() instead */
-        emscripten_async_call(tick, NULL, next < 0 ? 20 : next);
-        return;
+    for (i = 0; i < n; i++) {
+        ready[i] = fds[i] == 0 && js_stdin_ready();
+        count += ready[i];
+        watch0 |= fds[i] == 0;
     }
-    r = r < 0 || vlr_failed(g_L);
-    lua_close(g_L);
+    if (count > 0 || timeout_ms == 0) return count;
+    /* shortcut: stdin has no event to wait on, so poll it every 20 ms while a script waits for it */
+    for (;;) {
+        int slice = watch0 && (timeout_ms < 0 || timeout_ms > 20) ? 20 : timeout_ms;
+
+        js_sleep(slice);
+        if (watch0 && js_stdin_ready()) {
+            for (i = 0; i < n; i++) count += (ready[i] = fds[i] == 0);
+            return count;
+        }
+        if (timeout_ms >= 0) timeout_ms -= slice;
+        if (!watch0 || timeout_ms == 0) return 0;
+    }
+}
+
+void vlr_wasm_exit(int code)
+{
     vlr_flush();
-    g_L = NULL;
-    if (!js_exit(r)) emscripten_force_exit(r);
-}
-
-/* page calls this when input arrives, to run the loop now */
-EMSCRIPTEN_KEEPALIVE void vlr_wasm_wake(void)
-{
-    if (g_L != NULL) emscripten_async_call(tick, NULL, 0);
-}
-
-void vlr_wasm_run(lua_State *L)
-{
-    g_L = L;
-    emscripten_async_call(tick, NULL, 0);
-}
-
-/*
- * The page pushes input events itself (no terminal to decode): vlr.push(name, s, ints...) with nint integers.
- * char: ("char", text)   key: ("key", name, mods)   mouse: ("mouse", action, button, x, y, mods)   resize: ("resize", cols, rows)
- * (s may be NULL for resize).
- */
-EMSCRIPTEN_KEEPALIVE void vlr_wasm_push(const char *name, const char *s, int nint, int a, int b, int c, int d)
-{
-    int ints[4], i;
-
-    if (g_L == NULL) return;
-    ints[0] = a; ints[1] = b; ints[2] = c; ints[3] = d;
-    lua_getfield(g_L, LUA_REGISTRYINDEX, "_LOADED");
-    lua_getfield(g_L, -1, "vlr");
-    lua_remove(g_L, -2);
-    lua_getfield(g_L, -1, "push");
-    lua_remove(g_L, -2);
-    lua_pushstring(g_L, name);
-    if (s != NULL) lua_pushstring(g_L, s);
-    for (i = 0; i < nint && i < 4; i++) lua_pushinteger(g_L, ints[i]);
-    if (lua_pcall(g_L, 1 + (s != NULL) + (nint < 4 ? nint : 4), 0, 0) != LUA_OK) lua_pop(g_L, 1);
-    vlr_wasm_wake();
+    if (!js_exit(code)) emscripten_force_exit(code);
 }

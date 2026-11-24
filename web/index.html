@@ -21,41 +21,26 @@
 <body>
 <main>
   <h1>vlr playground <small>Lua 5.4.8 on WebAssembly, the same runtime as on the RP2040</small></h1>
-  <textarea id="code" spellcheck="false" aria-label="Lua code">print("hello from vlr", vapor.dialect)
-for i = 1, 3 do vapor.sleep(0.3); print("tick", i) end
-io.write("your name? "); io.flush()
-vapor.wait_fd(0)              -- wait for input without blocking the page
-print("hi " .. tostring(io.read("l")))</textarea>
+  <textarea id="code" spellcheck="false" aria-label="Lua code">local socket = require("socket")
+print("hello from vlr", _VERSION)
+for i = 1, 3 do socket.sleep(0.3); print("tick", i) end</textarea>
   <div class="row">
     <button id="run">Run</button>
     <select id="dialect" aria-label="Dialect"><option value="">5.1 dialect (default)</option><option value="--dialect=5.4">plain 5.4</option></select>
-    <button id="demo" type="button" title="Fills the editor with a script that prints every key, mouse and resize event">Events demo</button>
+    <a href="term.html" title="Keys, mouse and resize in a real terminal emulator">terminal</a> · <a href="term.html?example=snake" title="vaporUI's snake game, in a terminal">snake</a>
     <span class="status" id="status">loading…</span>
   </div>
-  <pre id="out" tabindex="0" aria-label="Output; click it to send keys and mouse to the script"></pre>
+  <pre id="out" aria-label="Output"></pre>
   <form class="row" id="form"><input id="stdin" placeholder="type here to answer, Enter to send" aria-label="Input to the script" autocomplete="off"><button>Send</button></form>
 </main>
 <script type="module">
   import createVlr from "./vlr.js";
-  import { startVlr, attachEvents } from "./vlr-glue.js";
+  import { startVlr } from "./vlr-glue.js";
   const $ = (id) => document.getElementById(id);
   let current = null;
-  // mode switches (mouse on/off) are for terminals, not for this pane
   const add = (s, cls) => { const e = document.createElement("span"); if (cls) e.className = cls; e.textContent = s.replace(/\x1b\[[?0-9;]*[hl]/g, "") + "\n";
     const o = $("out"), atEnd = o.scrollHeight - o.scrollTop - o.clientHeight < 4; // follow the log only if the user was already at the bottom
     o.append(e); if (atEnd) o.scrollTop = o.scrollHeight; };
-  // one character cell of the output pane, measured from a probe span; the size in cells feeds vapor.size
-  function cell() { const p = document.createElement("span"); p.textContent = "0000000000"; p.style.visibility = "hidden"; $("out").append(p);
-    const r = p.getBoundingClientRect(); p.remove(); return { w: r.width / 10 || 8, h: r.height || 18 }; }
-  function termSize() { const c = cell(), r = $("out").getBoundingClientRect(); return { cols: Math.max(1, Math.floor(r.width / c.w)), rows: Math.max(1, Math.floor(r.height / c.h)) }; }
-  const DEMO = `vapor.input({mouse = 2})      -- keys, chars, mouse (with motion), resize
-print("click here, type, scroll, resize the window; q quits")
-while true do
-  local ev = {vapor.pull()}
-  print(table.concat(ev, " "))
-  if ev[1] == "char" and ev[2] == "q" then break end
-end
-vapor.input(false)`;
   async function run() {
     $("out").textContent = ""; current = null; $("status").textContent = "running…";
     const args = [$("dialect").value, "/main.lua"].filter(Boolean);
@@ -63,16 +48,11 @@ vapor.input(false)`;
       current = await startVlr(createVlr, {
         files: { "/main.lua": $("code").value }, args,
         print: (s) => add(s), printErr: (s) => add(s, "err"),
-        cols: termSize().cols, rows: termSize().rows,
         onExit: (c) => { $("status").textContent = c === 0 ? "finished" : "failed (exit " + c + ")"; current = null; },
       });
     } catch (e) { add(String(e), "err"); $("status").textContent = "error"; }
   }
   $("run").onclick = run;
-  $("demo").onclick = () => { $("code").value = DEMO; run(); $("out").focus(); };
-  // events go to the running script only; the proxy forwards to whichever run is current
-  attachEvents($("out"), { event: (...a) => current?.event(...a) }, cell);
-  new ResizeObserver(() => { const t = termSize(); current?.resize(t.cols, t.rows); }).observe($("out"));
   $("form").onsubmit = (ev) => { ev.preventDefault(); if (current) current.sendInput($("stdin").value + "\n"); $("stdin").value = ""; };
   $("status").textContent = "ready";
   // lets a headless browser capture a run: top-level await holds the load event while the script runs

@@ -10,8 +10,8 @@ LUASRC   = $(addprefix third_party/lua/,$(VLR_LUA_SRC))
 MODULES ?=
 GEN     ?= build
 TARGET  ?= posix
-# the target's half of a module (@PLAT@ in modules.conf): sockets are posix or win32; wasm has none
-VLR_PLAT ?= $(if $(filter win32,$(TARGET)),win32,$(if $(filter wasm web,$(TARGET)),none,posix))
+# the target's half of a module (@PLAT@ in modules.conf): sockets are posix or win32; wasm has none (net_wasm.c: stubs)
+VLR_PLAT ?= $(if $(filter win32,$(TARGET)),win32,$(if $(filter wasm web,$(TARGET)),wasm,posix))
 # CONF_EXTRA=file...: more module lines (what `vpm bundle` writes) appended to modules.conf for this build; @VLR@ is pinned to this checkout
 CONF    := modules.conf
 ifneq ($(CONF_EXTRA),)
@@ -42,7 +42,7 @@ ifeq ($(TARGET),web)
 # browser (and Node, for the test harness): an ES module factory createVlr(); files live in MEMFS (web/vlr-glue.js)
 OUT      = web/vlr.js
 LIBS     = -sENVIRONMENT=web,node -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createVlr -sINVOKE_RUN=0 \
-           -sEXPORTED_RUNTIME_METHODS=FS,callMain,ccall -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sFORCE_FILESYSTEM=1
+           -sEXPORTED_RUNTIME_METHODS=FS,callMain,ccall -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sFORCE_FILESYSTEM=1 -sASYNCIFY -sASYNCIFY_STACK_SIZE=262144
 else
 LIBS     = -sNODERAWFS=1 -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=1
 endif

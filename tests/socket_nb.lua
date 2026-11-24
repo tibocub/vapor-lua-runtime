@@ -1,4 +1,5 @@
 -- LuaSocket's non-blocking mode (settimeout(0)), which event loops such as copas rely on: nothing blocks or yields, "timeout" says "try later"
+if not require("vlr").caps.net then return end -- wasm, boards without a network stack
 local socket = require("socket")
 assert(tostring(socket.tcp()):find("^tcp{master}"), "copas tells TCP from UDP by tostring")
 assert(tostring(socket.udp()):find("^udp"), tostring(socket.udp()))
