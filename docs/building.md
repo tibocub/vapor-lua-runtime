@@ -22,7 +22,7 @@ Sizes by module set are in spec.md (a stripped build with only `lfs` is about 27
 ## Adding C modules to a build
 - One rock from its rockspec: `tools/vlr-build add-rock ROCKSPEC SRCDIR [--write]` (builtin-type rockspecs only).
 - Several rocks fetched and hash-checked by vpm: `vpm bundle lpeg lbase64 --dir=D`, then `make CONF_EXTRA=D/bundle.conf`.
-- Rocks that load as `.so` need no rebuild: `vpm i` builds them (in a sandbox) and vlr finds them on `./lua_modules`.
+- Rocks that load as `.so` need no rebuild: `vpm i` builds them (in a sandbox) and vlr finds them in the `./lua_modules` luarocks tree (`share/lua/<ver>`, `lib/lua/<ver>`).
 The C API a module may use is Lua's public one, including the 5.1 names (`lauxlib.h` carries the shim, `patches/lua-api51.patch`).
 
 ## Tests

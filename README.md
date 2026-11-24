@@ -62,7 +62,7 @@ Libraries (`lfs`, `socket`, `ssl`, `cjson`, `lpeg`, `vaporui`, ...) are used exa
 `tests/` doubles as executable documentation.
 
 Packages come from [vpm](https://github.com/tibocub/vapor-package-manager): `vpm i lpeg`, `vpm search json --works`.
-Where the platform allows it (when `package.loadlib` can load shared objects), C modules installed by vpm load from `./lua_modules`.
+Where the platform allows it (when `package.loadlib` can load shared objects), C modules installed by vpm load from the `./lua_modules` luarocks tree.
 
 ## Building variants
 

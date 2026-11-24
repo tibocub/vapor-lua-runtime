@@ -220,25 +220,24 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
         }
     }
 #endif
+    { /* libraries are a luarocks tree (vpm's layout): <root>/share/lua/<ver> for Lua files, <root>/lib/lua/<ver> for compiled modules */
+        const char *ver = dialect51 ? "5.1" : "5.4";
 #ifdef VLR_LIBDIR /* the target's library folder (vaporOS: /flash/lib), searched before the default path */
-    lua_getglobal(L, "package");
-    lua_pushliteral(L, VLR_LIBDIR "/?.lua;" VLR_LIBDIR "/?/init.lua;");
-    lua_getfield(L, -2, "path");
-    lua_concat(L, 2);
-    lua_setfield(L, -2, "path");
-    lua_pop(L, 1);
+        const char *root = VLR_LIBDIR;
 #else /* host builds: a project's own libraries, as installed by `vpm i` (like node_modules): ./lua_modules is searched before everything else */
-    lua_getglobal(L, "package");
-    lua_pushliteral(L, "./lua_modules/?.lua;./lua_modules/?/init.lua;");
-    lua_getfield(L, -2, "path");
-    lua_concat(L, 2);
-    lua_setfield(L, -2, "path");
-    lua_pushliteral(L, "./lua_modules/?.so;");
-    lua_getfield(L, -2, "cpath");
-    lua_concat(L, 2);
-    lua_setfield(L, -2, "cpath");
-    lua_pop(L, 1);
+        const char *root = "./lua_modules";
 #endif
+        lua_getglobal(L, "package");
+        lua_pushfstring(L, "%s/share/lua/%s/?.lua;%s/share/lua/%s/?/init.lua;", root, ver, root, ver);
+        lua_getfield(L, -2, "path");
+        lua_concat(L, 2);
+        lua_setfield(L, -2, "path");
+        lua_pushfstring(L, "%s/lib/lua/%s/?.so;%s/lib64/lua/%s/?.so;", root, ver, root, ver);
+        lua_getfield(L, -2, "cpath");
+        lua_concat(L, 2);
+        lua_setfield(L, -2, "cpath");
+        lua_pop(L, 1);
+    }
 
     lua_newtable(L); /* vlr */
     lua_pushcfunction(L, l_now);
