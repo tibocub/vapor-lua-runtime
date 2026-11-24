@@ -8,6 +8,9 @@ local raw = require("vapor.netraw")
 local stream = require("vapor.stream")
 local M = {}
 
+-- a zero timeout is a poll that does not yield (LuaSocket semantics for libraries with their own scheduler, such as copas): see vapor.wait_fd
+vapor._poll = function(fd, writable) return raw.ready(fd, writable) end
+
 local function socket_ops(h)
   return {
     read = function(max) return raw.recv(h, max) end,
@@ -20,6 +23,7 @@ end
 local function wrap(h, host, port)
   return stream.wrap(socket_ops(h), {handle = h, peer = {host, port}})
 end
+M.wrap = wrap -- for socket.lua: a connection that was started without waiting
 
 -- a name resolved without stopping the other tasks (a worker thread on desktop systems); targets that cannot hand the name to connect, which resolves it blocking
 local function numeric(host) return host:match("^%d+%.%d+%.%d+%.%d+$") or host:find(":", 1, true) end

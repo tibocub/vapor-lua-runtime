@@ -16,6 +16,8 @@ Conn.__index = function(t, k)
   if type(f) == "function" then return function(_, ...) return f(t.sock, ...) end end
 end
 
+Conn.__tostring = function(o) return ("SSL{client}: %p"):format(o) end -- copas tells TLS from plain sockets by this prefix
+
 function M.wrap(sock, params)
   params = params or {}
   if params.mode and params.mode ~= "client" then return nil, "ssl server mode is not supported" end

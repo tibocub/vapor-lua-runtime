@@ -135,6 +135,16 @@ static int l_name(lua_State *L)
     return 2;
 }
 
+/* ready(handle [, writable]) -> boolean: a poll that never blocks and never yields (what a zero timeout means) */
+static int l_ready(lua_State *L)
+{
+    int fd = (int)luaL_checkinteger(L, 1), ready = 0;
+
+    if (lua_toboolean(L, 2)) fd |= VLR_WRITABLE;
+    lua_pushboolean(L, vlr_wait(&fd, 1, &ready, 0) > 0 && ready);
+    return 1;
+}
+
 static int l_close(lua_State *L)
 {
     vlr_net_close((int)luaL_checkinteger(L, 1));
@@ -147,7 +157,7 @@ int luaopen_vapor_netraw(lua_State *L)
     static const luaL_Reg funcs[] = {
         {"connect", l_connect}, {"resolve_start", l_resolve_start}, {"resolve_result", l_resolve_result}, {"listen", l_listen}, {"udp", l_udp}, {"accept", l_accept}, {"status", l_status},
         {"recv", l_recv}, {"send", l_send}, {"sendto", l_sendto}, {"recvfrom", l_recvfrom}, {"name", l_name},
-        {"close", l_close}, {NULL, NULL}};
+        {"ready", l_ready}, {"close", l_close}, {NULL, NULL}};
 
     luaL_newlib(L, funcs);
     return 1;

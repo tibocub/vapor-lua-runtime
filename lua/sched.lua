@@ -61,6 +61,10 @@ end
 -- apart by a flag in the handle (VLR_WRITABLE), so the waiter lists are keyed by the flagged value.
 local WRITABLE = 0x40000000
 function vapor.wait_fd(fd, timeout, mode)
+  if timeout == 0 and vapor._poll then -- just a poll: never yield (the caller may be a coroutine of someone else's scheduler)
+    if vapor._poll(fd, mode == "w") then return fd end
+    return nil, "timeout"
+  end
   local tok = me()
   local key = mode == "w" and fd + WRITABLE or fd
   local l = fdw[key]

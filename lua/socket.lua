@@ -16,10 +16,13 @@ local function clean(fmt) return type(fmt) == "string" and (fmt:gsub("^%*", ""))
 
 local Client = {}
 Client.__index = Client
+Client.__tostring = function(o) return ("tcp{client}: %p"):format(o) end
 local Server = {}
 Server.__index = Server
+Server.__tostring = function(o) return ("tcp{server}: %p"):format(o) end
 local Master = {}
 Master.__index = Master
+Master.__tostring = function(o) return ("tcp{master}: %p"):format(o) end
 
 local function wrapclient(stream)
   return setmetatable({s = stream, timeout = nil}, Client)
@@ -40,7 +43,40 @@ function Master:bind(host, port)
 end
 function Master:listen() if not self.server then return nil, "not bound" end
   return setmetatable({server = self.server, timeout = self.timeout}, Server) end
+-- timeout 0 is LuaSocket's non-blocking mode: connect returns nil, "timeout" while the connection is in progress and 1 once it is up
+-- (the caller waits with socket.select and calls connect again), as copas and other event loops expect. It never yields.
+local function numeric(host) return host:match("^%d+%.%d+%.%d+%.%d+$") or host:find(":", 1, true) end
+local function connect_nb(self, host, port)
+  if not self.h then
+    local addr = host
+    if not numeric(host) then
+      self.rh = self.rh or raw.resolve_start(host)
+      if self.rh then
+        local a, e = raw.resolve_result(self.rh)
+        if not a then
+          if e == "again" then return nil, "timeout" end
+          self.rh = nil
+          return nil, e
+        end
+        addr, self.rh = a, nil
+      end
+    end
+    local h, err = raw.connect(addr, port)
+    if not h then return nil, err end
+    self.h, self.peer = h, {host, port}
+  end
+  if not raw.ready(self.h, true) then return nil, "timeout" end
+  local st, serr = raw.status(self.h)
+  if not st then raw.close(self.h); self.h = nil; return nil, serr end
+  local s = net.wrap(self.h, self.peer[1], self.peer[2])
+  s:settimeout(0)
+  setmetatable(self, Client)
+  self.s, self.h, self.peer, self.master = s, nil, nil, nil
+  return 1
+end
+
 function Master:connect(host, port)
+  if self.timeout == 0 then return connect_nb(self, host, port) end
   local s, err = net.connect(host, port, self.timeout)
   if not s then return nil, err == "timeout" and "timeout" or err end
   s:settimeout(self.timeout)
@@ -107,6 +143,7 @@ end
 -- UDP
 local Udp = {}
 Udp.__index = Udp
+Udp.__tostring = function(o) return ("udp{unconnected}: %p"):format(o) end
 function M.udp()
   local u, err = net.udp("0.0.0.0", 0)
   if not u then return nil, err end
