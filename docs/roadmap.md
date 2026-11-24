@@ -4,8 +4,9 @@
 Rule: code that runs on vlr runs on official Lua 5.1 / LuaJIT / 5.4. vlr uses the standard library names and APIs and adds no syntax.
 - [x] `ed25519` is a standalone rock (github.com/tibocub/lua-ed25519); `vapor.sign` is a deprecated alias.
 - [x] `ssl` and `ssl.https` with luasec's client API over BearSSL (`vapor.tls` stays as the engine glue). vpm uses them; `std.http` is no longer needed by vpm.
-- [ ] Real luasocket C code where BSD sockets exist (today `socket` is a Lua subset over `vapor.net`).
-- [ ] Event loop behind `socket.select` / copas-compatible; `vapor.spawn/sleep/wait_fd` become internal.
+- Real luasocket C code is not needed: blocking calls must yield to vlr's tasks, so `socket` stays a Lua subset with the LuaSocket API (smtp, ftp, headers missing).
+- [x] copas 4.12 (installed by vpm) runs unmodified on `socket`: `settimeout(0)` is a real non-blocking mode (connect/accept/receive return "timeout", never yield). `tests/socket_nb.lua` covers it.
+- [ ] `vapor.spawn/sleep/wait_fd` become internal; copas is the documented way to write concurrent code portable to stock Lua.
 - [ ] One small `vlr` table for feature detection (`caps`, `builtin`, `platform`) that vpm reads; remove the rest of `vapor.*` and `std.*` after one minor release.
 - [ ] Dialect per program (`--lua=5.1|5.4` or a rockspec `lua` constraint); never mixed. A lint for 5.3-only syntax in 5.1 programs.
 - Dropped: LuaJIT engine inside vlr, partial JIT, transpilers, workers mixing versions.
