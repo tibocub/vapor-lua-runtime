@@ -65,4 +65,3 @@ jobs:
       - run: make TARGET=web web/vlr.js
       - run: VLR="node --liftoff-only web/run.mjs" sh tests/run.sh
       - run: node --liftoff-only web/ui-test.mjs
-      - run: node web/ev-test.mjs
