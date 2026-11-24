@@ -68,7 +68,7 @@ jobs:
       - name: build the demo site
         run: |
           curl -fsSL https://bun.sh/install | bash && export PATH="$HOME/.bun/bin:$PATH"
-          sh web/build.sh && sh web/pack.sh site
+          sh web/build.sh && sh web/pack.sh "$PWD/site"
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
 
