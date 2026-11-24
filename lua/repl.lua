@@ -1,12 +1,12 @@
--- vapor.repl: an interactive prompt (vlr with no script, or vlr -i). Reads whole lines in the console's own line mode (so the terminal edits
+-- vlr.repl: an interactive prompt (vlr with no script, or vlr -i). Reads whole lines in the console's own line mode (so the terminal edits
 -- them); waits cooperatively, so timers and tasks keep running while it sits at the prompt.
 -- repl([read [, write]]): read(prompt) -> line or nil at end of input; write(text). Defaults: the console. Returns when input ends.
 -- shortcut: no history or completion of its own (the terminal's line editing only); NuttX gets a readline hook, upgrade then.
-local vapor = vapor
+local vlr = require("vlr")
 
 local function default_read(prompt)
   io.stdout:write(prompt); io.stdout:flush()
-  if vapor.wait_fd then vapor.wait_fd(0) end
+  if vlr.wait_fd then vlr.wait_fd(0) end
   return io.read("l")
 end
 local function default_write(s) io.stdout:write(s); io.stdout:flush() end

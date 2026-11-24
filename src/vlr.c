@@ -1,4 +1,4 @@
-/* vlr core: the `vapor` table over the platform interface. No OS headers here. */
+/* vlr core: the `vlr` internals table (require("vlr")) over the platform interface. No OS headers here. */
 #include <stdio.h>
 #if defined(VLR_HOSTLIBDIR) && defined(__NuttX__)
 #include <sys/mount.h>
@@ -73,7 +73,14 @@ static int l_now(lua_State *L)
     return 1;
 }
 
-/* vapor.wait(fds, timeout_ms) -> array of ready fds ({} on timeout); timeout nil = forever */
+static void getvlr(lua_State *L) /* push the vlr table */
+{
+    lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED");
+    lua_getfield(L, -1, "vlr");
+    lua_remove(L, -2);
+}
+
+/* vlr.wait(fds, timeout_ms) -> array of ready fds ({} on timeout); timeout nil = forever */
 static int l_wait(lua_State *L)
 {
     int fds[VLR_MAX_FDS], ready[VLR_MAX_FDS], n, i, r, k = 0;
@@ -114,7 +121,7 @@ static void setcaps(lua_State *L)
     size_t i;
 
     for (b = vlr_builtin, have &= ~(uint32_t)VLR_CAP_NET; *b != NULL; b++) {
-        if (strcmp(*b, "vapor.net") == 0) have |= vlr_caps() & VLR_CAP_NET; /* a capability needs the platform AND the module */
+        if (strcmp(*b, "vlr.net") == 0) have |= vlr_caps() & VLR_CAP_NET; /* a capability needs the platform AND the module */
     }
 
     lua_newtable(L);
@@ -233,7 +240,7 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
     lua_pop(L, 1);
 #endif
 
-    lua_newtable(L); /* vapor */
+    lua_newtable(L); /* vlr */
     lua_pushcfunction(L, l_now);
     lua_setfield(L, -2, "now");
     lua_pushcfunction(L, l_wait);
@@ -255,7 +262,10 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
         }
     }
     lua_setfield(L, -2, "builtin");
-    lua_setglobal(L, "vapor");
+    lua_getfield(L, LUA_REGISTRYINDEX, "_LOADED"); /* require("vlr"): internals are a module, not a global */
+    lua_pushvalue(L, -2);
+    lua_setfield(L, -2, "vlr");
+    lua_pop(L, 2);
 
     if ((dialect51 && runembedded(L, vlr_lua_compat, vlr_lua_compat_len, "=compat")) ||
         runembedded(L, vlr_lua_sched, vlr_lua_sched_len, "=sched")) {
@@ -285,7 +295,7 @@ int vlr_spawn_file(lua_State *L, const char *path, int argc, char **argv)
     }
     lua_setglobal(L, "arg");
 
-    lua_getglobal(L, "vapor");
+    getvlr(L);
     lua_getfield(L, -1, "spawn");
     lua_remove(L, -2);
     lua_insert(L, -2); /* spawn, fn */
@@ -315,7 +325,7 @@ int vlr_spawn_string(lua_State *L, const char *code, int argc, char **argv)
         lua_rawseti(L, -2, i + 1);
     }
     lua_setglobal(L, "arg");
-    lua_getglobal(L, "vapor");
+    getvlr(L);
     lua_getfield(L, -1, "spawn");
     lua_remove(L, -2);
     lua_insert(L, -2);
@@ -331,7 +341,7 @@ int vlr_step(lua_State *L, int max_ms, int *next_ms)
 {
     int r;
 
-    lua_getglobal(L, "vapor");
+    getvlr(L);
     lua_getfield(L, -1, "step");
     lua_remove(L, -2);
     if (max_ms >= 0) lua_pushinteger(L, max_ms);
@@ -351,7 +361,7 @@ int vlr_failed(lua_State *L)
 {
     int r;
 
-    lua_getglobal(L, "vapor");
+    getvlr(L);
     lua_getfield(L, -1, "failed");
     lua_remove(L, -2);
     lua_call(L, 0, 1);

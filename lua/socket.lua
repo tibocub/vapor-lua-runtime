@@ -1,4 +1,4 @@
--- socket: a LuaSocket-compatible subset over vapor.net, so pure-Lua rocks written for luasocket run unmodified (std.socket is the same module).
+-- socket: a LuaSocket-compatible subset over vlr.net, so pure-Lua rocks written for luasocket run unmodified (std.socket is the same module).
 --   socket.tcp() -> master; m:connect(host, port) -> 1 | nil, err; m:bind(host, port); m:listen(backlog) -> server (m itself); server:accept() -> client
 --   client:send(data [, i [, j]]) -> last byte sent | nil, err, lastsent; client:receive(pattern, prefix) pattern "*l" (default) "*L" "*a" or a byte count
 --   timeouts: client:settimeout(seconds | nil [, mode]); on a timeout receive/send give nil, "timeout" (and the partial data); errors are "closed", "timeout", ...
@@ -7,9 +7,9 @@
 --   socket.gettime() (seconds, float), socket.sleep(s), socket.dns.toip(name), socket.dns.gethostname(), socket._VERSION, socket.skip, socket.try/newtry/protect
 -- Not done (shortcuts): socket.select polls every 5 ms instead of waiting on all handles at once; dns.toip only resolves through connect-time lookup (returns the
 -- name if it already is an address); ltn12, mime, socket.url and socket.http are in vlr (socket_*.lua, ltn12.lua, mime.lua); smtp/ftp/headers are not.
-local vapor = vapor
-local net = require("vapor.net")
-local raw = require("vapor.netraw")
+local vlr = require("vlr")
+local net = require("vlr.net")
+local raw = require("vlr.netraw")
 local M = {_VERSION = "vlr socket (LuaSocket 3.0 subset)"}
 
 local function clean(fmt) return type(fmt) == "string" and (fmt:gsub("^%*", "")) or fmt end
@@ -174,12 +174,12 @@ local function readable(obj)
   if s and s.buf ~= "" then return true end
   local h = obj.getfd and obj:getfd()
   if not h or h < 0 then return false end
-  return vapor.wait_fd(h, 0) ~= nil
+  return vlr.wait_fd(h, 0) ~= nil
 end
 local function writable(obj)
   local h = obj.getfd and obj:getfd()
   if not h or h < 0 then return false end
-  return vapor.wait_fd(h, 0, "w") ~= nil
+  return vlr.wait_fd(h, 0, "w") ~= nil
 end
 function M.select(recvt, sendt, timeout)
   local deadline = timeout and (M.gettime() + timeout)
@@ -189,12 +189,12 @@ function M.select(recvt, sendt, timeout)
     for _, o in ipairs(sendt or {}) do if writable(o) then w[#w + 1] = o; w[o] = o end end
     if #r > 0 or #w > 0 then return r, w end
     if deadline and M.gettime() >= deadline then return r, w, "timeout" end
-    vapor.sleep(0.005)
+    vlr.sleep(0.005)
   end
 end
 
-function M.gettime() return vapor.now and vapor.now() / 1000 or os.time() end
-function M.sleep(s) vapor.sleep(s) end
+function M.gettime() return vlr.now and vlr.now() / 1000 or os.time() end
+function M.sleep(s) vlr.sleep(s) end
 M.skip = function(n, ...) return select(n + 1, ...) end
 M.try = function(...) local v = ... if v then return ... end error({select(2, ...)}) end
 function M.newtry(f) return function(...) local v = ... if v then return ... end if f then f() end error({(select(2, ...))}, 2) end end

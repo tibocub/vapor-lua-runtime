@@ -1,5 +1,6 @@
+local vlr = require("vlr")
 -- the LuaSocket-compatible subset: code written for luasocket runs unchanged
-if not vapor.caps.net then return end
+if not vlr.caps.net then return end
 local socket = require("socket")
 
 local server = assert(socket.bind and socket.bind("127.0.0.1", 0) or (function()
@@ -8,13 +9,13 @@ end)())
 local _, port = server:getsockname()
 assert(port and port > 0)
 
-vapor.spawn(function()
+vlr.spawn(function()
   local c = assert(server:accept())
   c:settimeout(5)
   assert(c:send("hello\r\nworld\n"))
   assert(c:receive(4) == "ping")
   assert(c:send("0123456789"))
-  vapor.sleep(0.2)        -- let the client time out once
+  vlr.sleep(0.2)        -- let the client time out once
   assert(c:send("tail"))
   c:close()
 end)

@@ -1,13 +1,13 @@
--- vapor.tls: TLS client over a vapor.net stream. The certificate chain and the host name are always verified (there is no way to skip that).
---   tls.connect(host, port, opts) -> stream (like vapor.net.connect), or nil, err
+-- vlr.tls: TLS client over a vlr.net stream. The certificate chain and the host name are always verified (there is no way to skip that).
+--   tls.connect(host, port, opts) -> stream (like vlr.net.connect), or nil, err
 --   tls.wrap(sock, host, opts)    -> stream over an already connected socket stream
 --   opts.ca = PEM text or anchors | opts.cafile = path of a PEM bundle | opts.timeout   (default: $VLR_CA_FILE, $SSL_CERT_FILE, then the system bundle)
 --   tls.anchors(pem) -> trust anchors to reuse for many connections
--- The engine (vapor.tlsraw) does no I/O; this file moves its bytes, so waiting stays in the scheduler. The stream is the one from vapor.stream.
+-- The engine (vlr.tlsraw) does no I/O; this file moves its bytes, so waiting stays in the scheduler. The stream is the one from vlr.stream.
 -- shortcut: a peer that closes the transport without close_notify reads as end of data (truncation is not told apart). Where the system has no bundle file the roots come from
--- the Windows certificate store (ROOT store) plus the built-in Mozilla list (vapor.cacerts, tools/mkcacerts.sh), read once per process.
-local raw = require("vapor.tlsraw")
-local stream = require("vapor.stream")
+-- the Windows certificate store (ROOT store) plus the built-in Mozilla list (vlr.cacerts, tools/mkcacerts.sh), read once per process.
+local raw = require("vlr.tlsraw")
+local stream = require("vlr.stream")
 local M = {}
 
 M.anchors = raw.anchors
@@ -37,13 +37,13 @@ local function load_anchors(opts)
     end
   end
   if not key and not ca then
-    -- no bundle file: the system's certificate store (Windows) plus the built-in Mozilla roots (vapor.cacerts, if this build has them). Windows keeps only some roots
+    -- no bundle file: the system's certificate store (Windows) plus the built-in Mozilla roots (vlr.cacerts, if this build has them). Windows keeps only some roots
     -- in its store and fetches the others when a chain needs them, so the store alone is not enough for a client that does not build chains through the OS.
     if not cache.system then
       local parts = {}
       local sys = raw.system_roots()
       if sys then parts[#parts + 1] = sys end
-      local ok, builtin = pcall(require, "vapor.cacerts")
+      local ok, builtin = pcall(require, "vlr.cacerts")
       if ok then parts[#parts + 1] = builtin end
       if #parts > 0 then
         local a, err = raw.anchors(table.concat(parts, "\n"))
@@ -160,7 +160,7 @@ end
 
 function M.connect(host, port, opts)
   opts = opts or {}
-  local sock, err = require("vapor.net").connect(host, port, opts.timeout)
+  local sock, err = require("vlr.net").connect(host, port, opts.timeout)
   if not sock then return nil, err end
   return M.wrap(sock, host, opts)
 end

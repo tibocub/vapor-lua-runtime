@@ -1,4 +1,4 @@
-/* vapor.netraw: non-blocking socket primitives over vlr_net_*; lua/net.lua (module vapor.net) builds streams on them.
+/* vlr.netraw: non-blocking socket primitives over vlr_net_*; lua/net.lua (module vlr.net) builds streams on them.
    Calls return a value, or nil plus "again" (retry after waiting), "eof" (peer closed) or an error text. */
 #include "lauxlib.h"
 #include "lua.h"
@@ -152,7 +152,7 @@ static int l_close(lua_State *L)
     return 1;
 }
 
-int luaopen_vapor_netraw(lua_State *L)
+int luaopen_vlr_netraw(lua_State *L)
 {
     static const luaL_Reg funcs[] = {
         {"connect", l_connect}, {"resolve_start", l_resolve_start}, {"resolve_result", l_resolve_result}, {"listen", l_listen}, {"udp", l_udp}, {"accept", l_accept}, {"status", l_status},

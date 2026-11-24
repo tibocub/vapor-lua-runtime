@@ -1,4 +1,4 @@
-/* vapor.netraw for targets without sockets (wasm): every call fails, vapor.caps.net is false there. */
+/* vlr.netraw for targets without sockets (wasm): every call fails, vlr.caps.net is false there. */
 #include <errno.h>
 
 #include "vlr_platform.h"

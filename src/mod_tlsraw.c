@@ -1,4 +1,4 @@
-/* vapor.tlsraw: a TLS client engine without any I/O (BearSSL, sibling checkout @EXT@/BearSSL). Lua (lua/tls.lua) moves the bytes between the engine and
+/* vlr.tlsraw: a TLS client engine without any I/O (BearSSL, sibling checkout @EXT@/BearSSL). Lua (lua/tls.lua) moves the bytes between the engine and
    a socket stream, so waiting stays in the scheduler and another backend (mbedTLS on NuttX, OpenSSL...) only has to offer the same calls.
      tlsraw.anchors(pem)        -> trust anchors parsed from a PEM bundle (userdata, reusable for many connections), or nil, err
      tlsraw.client(anchors, host) -> engine; the certificate chain AND the host name are verified, there is no switch to turn that off
@@ -15,8 +15,8 @@
 #include "lua.h"
 #include "vlr_platform.h"
 
-#define ANCHORS_MT "vapor.tlsraw.anchors"
-#define ENGINE_MT "vapor.tlsraw.engine"
+#define ANCHORS_MT "vlr.tlsraw.anchors"
+#define ENGINE_MT "vlr.tlsraw.engine"
 
 typedef struct {
     br_x509_trust_anchor *list;
@@ -328,7 +328,7 @@ static int engine_gc(lua_State *L)
     return 0;
 }
 
-int luaopen_vapor_tlsraw(lua_State *L)
+int luaopen_vlr_tlsraw(lua_State *L)
 {
     static const luaL_Reg funcs[] = {{"anchors", l_anchors}, {"system_roots", l_system_roots}, {"client", l_client}, {NULL, NULL}};
     static const luaL_Reg methods[] = {{"state", engine_state}, {"take", engine_take}, {"put", engine_put}, {"send", engine_send},

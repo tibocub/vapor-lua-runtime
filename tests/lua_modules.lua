@@ -1,8 +1,9 @@
+local vlr = require("vlr")
 -- ./lua_modules is searched first (Lua and C modules), like node_modules
 assert(package.path:find("^%./lua_modules/%?%.lua;%./lua_modules/%?/init%.lua;"), package.path)
 assert(package.cpath:find("^%./lua_modules/%?%.so;"), package.cpath)
 local ok, lfs = pcall(require, "lfs")
-if not ok or vapor.platform == "windows" then print("ok"); return end
+if not ok or vlr.platform == "windows" then print("ok"); return end
 local cwd = lfs.currentdir()
 local dir = cwd .. "/lm-test-" .. os.time()
 assert(lfs.mkdir(dir)); assert(lfs.mkdir(dir .. "/lua_modules")); assert(lfs.mkdir(dir .. "/lua_modules/pkg"))

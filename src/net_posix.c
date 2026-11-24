@@ -1,4 +1,4 @@
-/* vapor.netraw backend for POSIX and NuttX (with CONFIG_NET): BSD sockets, non-blocking, polled by vlr_wait. */
+/* vlr.netraw backend for POSIX and NuttX (with CONFIG_NET): BSD sockets, non-blocking, polled by vlr_wait. */
 #define _POSIX_C_SOURCE 200809L
 #include <errno.h>
 #include <fcntl.h>

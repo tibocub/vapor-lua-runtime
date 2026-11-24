@@ -1,5 +1,6 @@
+local vlr = require("vlr")
 -- default dialect: 5.1 behaviour on the 5.4 engine
-assert(vapor.dialect == "5.1")
+assert(vlr.dialect == "5.1")
 assert(unpack({1, 2, 3}) == 1 and select("#", unpack({1, 2, 3})) == 3)
 assert(loadstring("return 1 + 1")() == 2)
 assert(table.getn({1, 2}) == 2 and math.pow(2, 3) == 8)

@@ -1,13 +1,14 @@
--- vapor.net over loopback: tcp echo, read formats, timeouts, refused connection, udp, Node-style events, pipe
-if not vapor.caps.net then return end -- wasm, boards without a network stack
-local net, stream = require("vapor.net"), require("vapor.stream")
+local vlr = require("vlr")
+-- vlr.net over loopback: tcp echo, read formats, timeouts, refused connection, udp, Node-style events, pipe
+if not vlr.caps.net then return end -- wasm, boards without a network stack
+local net, stream = require("vlr.net"), require("vlr.stream")
 
 local srv = assert(net.listen("127.0.0.1", 0))
 local port = srv:port()
 assert(port and port > 0)
 
 -- server task: echoes lines until the client closes, then says goodbye on a second connection
-vapor.spawn(function()
+vlr.spawn(function()
   local c = assert(srv:accept(5))
   while true do
     local line = c:read("l")
@@ -55,21 +56,21 @@ u1:close(); u2:close()
 -- Node-style events and pipe over a second server
 local srv2 = assert(net.listen("127.0.0.1", 0))
 local got, ended = {}, false
-vapor.spawn(function()
+vlr.spawn(function()
   local s = assert(srv2:accept(5))
-  s:write("abc"); vapor.sleep(0.05); s:write("def")
+  s:write("abc"); vlr.sleep(0.05); s:write("def")
   s:close()
 end)
 local cc = assert(net.connect("127.0.0.1", srv2:port(), 5))
 cc:on("data", function(d) got[#got + 1] = d end):on("end", function() ended = true end)
-for _ = 1, 100 do if ended then break end vapor.sleep(0.02) end
+for _ = 1, 100 do if ended then break end vlr.sleep(0.02) end
 assert(ended and table.concat(got) == "abcdef", table.concat(got))
 srv2:close()
 
 -- pipe: copies one stream into another with write backpressure
 local srv3 = assert(net.listen("127.0.0.1", 0))
 local sink = {}
-vapor.spawn(function()
+vlr.spawn(function()
   local s = assert(srv3:accept(5))
   s:write("pipe me"); s:close()
 end)
@@ -84,24 +85,24 @@ srv3:close()
 do
   local s2 = assert(net.listen("127.0.0.1", 0))
   local woke
-  vapor.spawn(function() local c, e = s2:accept(); woke = e or "accepted" end)
-  vapor.sleep(0.05)
+  vlr.spawn(function() local c, e = s2:accept(); woke = e or "accepted" end)
+  vlr.sleep(0.05)
   s2:close()
-  vapor.sleep(0.05)
+  vlr.sleep(0.05)
   assert(woke == "closed", tostring(woke))
 end
 
 -- name resolution does not stop other tasks: a ticking task keeps running while "localhost" and an unknown name resolve
 do
   local ticks, stop = 0, false
-  vapor.spawn(function() while not stop do vapor.sleep(0.01); ticks = ticks + 1 end end)
+  vlr.spawn(function() while not stop do vlr.sleep(0.01); ticks = ticks + 1 end end)
   local a = assert(net.resolve("localhost", 5))
   assert(a == "127.0.0.1" or a == "::1", a)
   local bad, err = net.resolve("no-such-host.invalid", 10)
   assert(bad == nil and err, "an unknown name is an error")
   assert(net.resolve("127.0.0.1") == "127.0.0.1")
-  vapor.sleep(0.05)
+  vlr.sleep(0.05)
   assert(ticks > 0, "the other task kept running")
   stop = true
-  vapor.sleep(0.05)
+  vlr.sleep(0.05)
 end

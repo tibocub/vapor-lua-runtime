@@ -1,5 +1,6 @@
+local vlr = require("vlr")
 -- 5.1-era library support found by running real rocks (docs/libtest.md): module()/package.seeall, math.log10 & friends, float arguments, bit, bit32, cjson.safe
-assert(vapor.dialect == "5.1")
+assert(vlr.dialect == "5.1")
 
 -- float arguments are truncated like in 5.1; non-numbers still fail
 assert(("abcdef"):sub(1.5, 3.9) == "abc" and string.rep("a", 2.9) == "aa" and string.format("%d", 3.9) == "3")

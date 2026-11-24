@@ -1,14 +1,14 @@
--- vlr scheduler: cooperative tasks over vapor.wait (one poll primitive) with timers and an event queue.
--- No threads, no callbacks. Everything blocks "inside" a task; the loop in vapor.run does the one real wait.
-local vapor = vapor
-local now, cwait = vapor.now, vapor.wait
+-- vlr scheduler: cooperative tasks over vlr.wait (one poll primitive) with timers and an event queue.
+-- No threads, no callbacks. Everything blocks "inside" a task; the loop in vlr.run does the one real wait.
+local vlr = require("vlr")
+local now, cwait = vlr.now, vlr.wait
 local create, resume, yield, running = coroutine.create, coroutine.resume, coroutine.yield, coroutine.running
 local unpack = table.unpack
 
 local ready = {}    -- queue of {co, args...}
 local timers = {}   -- {at=ms, fn=function}; shortcut: linear scan, upgrade to a heap past ~100 timers
 local fdw = {}      -- fd -> array of tokens (a token is {co=...})
-local pullers = {}  -- tokens waiting in vapor.pull
+local pullers = {}  -- tokens waiting in vlr.pull
 local evq = {}      -- events nobody pulled yet
 local waiting = setmetatable({}, {__mode = "k"}) -- co -> the token it is blocked on
 local failed = false
@@ -39,18 +39,18 @@ end
 
 local function me()
   local co, ismain = running()
-  assert(not ismain, "vapor: call this from a task (vapor.spawn / the main script)")
+  assert(not ismain, "vlr: call this from a task (vlr.spawn / the main script)")
   return {co = co}
 end
 
-function vapor.spawn(fn, ...)
+function vlr.spawn(fn, ...)
   local co = create(fn)
   live = live + 1
   ready[#ready + 1] = {co, ...}
   return co
 end
 
-function vapor.sleep(seconds)
+function vlr.sleep(seconds)
   local tok = me()
   waiting[tok.co] = tok
   timers[#timers + 1] = {at = now() + math.floor(seconds * 1000), fn = function() wake(tok) end}
@@ -60,9 +60,9 @@ end
 -- wait until fd is readable (mode "w": writable): returns fd, or nil,"timeout". The platform tells the two waits
 -- apart by a flag in the handle (VLR_WRITABLE), so the waiter lists are keyed by the flagged value.
 local WRITABLE = 0x40000000
-function vapor.wait_fd(fd, timeout, mode)
-  if timeout == 0 and vapor._poll then -- just a poll: never yield (the caller may be a coroutine of someone else's scheduler)
-    if vapor._poll(fd, mode == "w") then return fd end
+function vlr.wait_fd(fd, timeout, mode)
+  if timeout == 0 and vlr._poll then -- just a poll: never yield (the caller may be a coroutine of someone else's scheduler)
+    if vlr._poll(fd, mode == "w") then return fd end
     return nil, "timeout"
   end
   local tok = me()
@@ -76,7 +76,7 @@ function vapor.wait_fd(fd, timeout, mode)
 end
 
 -- a handle is about to be closed: tasks waiting on it are woken with nil,"closed" (the OS would not do it everywhere: a closed socket in a Windows poll set never wakes)
-function vapor.close_fd(fd)
+function vlr.close_fd(fd)
   for _, key in ipairs({fd, fd + WRITABLE}) do
     local l = fdw[key]
     fdw[key] = nil
@@ -84,7 +84,7 @@ function vapor.close_fd(fd)
   end
 end
 
-function vapor.push(name, ...)
+function vlr.push(name, ...)
   for i, tok in ipairs(pullers) do
     if waiting[tok.co] == tok then
       table.remove(pullers, i)
@@ -95,7 +95,7 @@ function vapor.push(name, ...)
 end
 
 -- next event (name, ...) or nil,"timeout"
-function vapor.pull(timeout)
+function vlr.pull(timeout)
   if #evq > 0 then return unpack(table.remove(evq, 1)) end
   local tok = me()
   pullers[#pullers + 1] = tok
@@ -103,19 +103,19 @@ function vapor.pull(timeout)
 end
 
 local timerid = 0
-function vapor.timer(seconds)
+function vlr.timer(seconds)
   timerid = timerid + 1
   local id = timerid
-  timers[#timers + 1] = {at = now() + math.floor(seconds * 1000), fn = function() vapor.push("timer", id) end}
+  timers[#timers + 1] = {at = now() + math.floor(seconds * 1000), fn = function() vlr.push("timer", id) end}
   return id
 end
 
 -- ---- hooks for optional modules (input, net, ...): timers and handle sources, without touching scheduler internals ----
-local sources = {} -- fd -> function called from the loop when the handle is readable (a persistent wait, unlike vapor.wait_fd)
+local sources = {} -- fd -> function called from the loop when the handle is readable (a persistent wait, unlike vlr.wait_fd)
 
-function vapor._after(ms, fn) timers[#timers + 1] = {at = now() + ms, fn = fn} end
+function vlr._after(ms, fn) timers[#timers + 1] = {at = now() + ms, fn = fn} end
 
-function vapor._source(fd, fn) sources[fd] = fn end
+function vlr._source(fd, fn) sources[fd] = fn end
 
 local function pending_fds()
   local list = {}
@@ -145,7 +145,7 @@ end
 -- One turn of the loop, for a host that owns the main loop (browser, GUI toolkit): runs ready tasks, waits at most
 -- max_ms (nil = until the next timer/fd), wakes what is due, runs ready tasks again.
 -- Returns nil when nothing is left to do, else ms until the next timer (-1 if only waiting on fds).
-function vapor.step(max_ms)
+function vlr.step(max_ms)
   drain()
   local fds = pending_fds()
   for fd in pairs(sources) do fds[#fds + 1] = fd end
@@ -168,21 +168,8 @@ function vapor.step(max_ms)
   return deadline() or -1
 end
 
-function vapor.run()
-  while vapor.step() do end
+function vlr.run()
+  while vlr.step() do end
 end
 
-function vapor.failed() return failed end
-
--- Optional modules appear lazily: vapor.fs is the module "vapor.fs" (loaded on first access); a build without it gives nil.
--- Only registered (compiled-in) modules count, so a typo never searches the file system. `alias` keeps older stable names.
-local alias = {size = {"term", "console_size"}}
-setmetatable(vapor, {__index = function(t, k)
-  local a = alias[k]
-  local name = "vapor." .. (a and a[1] or k)
-  if type(k) ~= "string" or not package.preload[name] then return nil end
-  local v = require(name)
-  if a then v = v[a[2]] end
-  rawset(t, k, v)
-  return v
-end})
+function vlr.failed() return failed end

@@ -1,3 +1,4 @@
+local vlr = require("vlr")
 -- ltn12, mime, socket.url and socket.http (LuaSocket's companion modules)
 local ltn12, mime, url = require("ltn12"), require("mime"), require("socket.url")
 
@@ -46,7 +47,7 @@ assert(pp[1] == "a" and pp[2] == "b c" and pp.is_absolute and pp.is_directory an
 assert(url.parse("") == nil)
 
 -- socket.http against a tiny server written with plain sockets (one task per connection)
-if vapor.caps.net then
+if vlr.caps.net then
   local http, socket = require("socket.http"), require("socket")
   local function handler(req)
     if req.path == "/r" then return 302, "", {Location = "/hello"}
@@ -57,11 +58,11 @@ if vapor.caps.net then
   end
   local listener = assert(socket.bind("127.0.0.1", 0))
   local srv = {port = function() return select(2, listener:getsockname()) end}
-  vapor.spawn(function()
+  vlr.spawn(function()
     while true do
       local c = listener:accept()
       if not c then break end
-      vapor.spawn(function()
+      vlr.spawn(function()
         local line = c:receive("*l")
         local method, target = line:match("^(%u+) (%S+)")
         local path, query = target:match("^([^?]*)%??(.*)$")

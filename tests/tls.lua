@@ -1,5 +1,6 @@
+local vlr = require("vlr")
 -- TLS client against local openssl servers (started by tests/tls/run.sh)
-local tls = require("vapor.tls")
+local tls = require("vlr.tls")
 local dir, good, other = os.getenv("TLS_DIR"), tonumber(os.getenv("TLS_GOOD")), tonumber(os.getenv("TLS_OTHER"))
 if not dir then print("skip tls.lua (run tests/tls/run.sh)"); return end
 local function slurp(p) local f = assert(io.open(dir .. "/" .. p, "rb")); local s = f:read("*a"); f:close(); return s end

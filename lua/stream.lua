@@ -1,11 +1,11 @@
--- vapor.stream: one file-like object over any non-blocking byte source (sockets now; pipes, files, the console later).
+-- vlr.stream: one file-like object over any non-blocking byte source (sockets now; pipes, files, the console later).
 -- A backend provides ops: read(max) -> data | nil,"again" | nil,"eof" | nil,err ; write(data) -> n | nil,"again" | nil,err ;
 -- wait(mode, timeout) -> true | nil,"timeout" (mode "r" or "w") ; close(). Methods are used from tasks and block only the task.
 --   s:read(fmt)  fmt: number = that many bytes, "l" a line without the newline, "L" with it, "a" everything; leading "*" accepted (5.1)
 --   s:readsome(max) at least one byte as soon as any arrives (streaming), nil at end        s:write(...)   s:lines()   s:chunks(max)
 --   s:settimeout(seconds|nil)   s:close()   s:on(event, fn): "data" (chunk), "end", "error" (msg), "close" -- Node-style, a task reads for you
 --   stream.pipe(src, dst): copies until src ends, with the backpressure of write
-local vapor = vapor
+local vlr = require("vlr")
 local M = {}
 local Stream = {}
 Stream.__index = Stream
@@ -17,7 +17,7 @@ function M.wrap(ops, extra)
 end
 
 function Stream:settimeout(t) self.timeout = t; return self end
--- limits for untrusted peers (servers): s:setdeadline(ms) = an absolute vapor.now() time after which any wait fails with "timeout" (nil clears it, so one
+-- limits for untrusted peers (servers): s:setdeadline(ms) = an absolute vlr.now() time after which any wait fails with "timeout" (nil clears it, so one
 -- slow trickle cannot outlive it however often a byte arrives); s:setmaxline(n) = a line longer than n bytes fails with "line too long" instead of growing the buffer
 function Stream:setdeadline(at) self.deadline = at; return self end
 function Stream:setmaxline(n) self.maxline = n; return self end
@@ -31,7 +31,7 @@ local function fill(self)
     if e ~= "again" then return nil, e end
     local t = self.timeout
     if self.deadline then
-      local left = (self.deadline - vapor.now()) / 1000
+      local left = (self.deadline - vlr.now()) / 1000
       if left <= 0 then return nil, "timeout" end
       if t == nil or left < t then t = left end
     end
@@ -133,7 +133,7 @@ function Stream:on(event, fn)
   if not h then
     h = {}
     self.handlers = h
-    vapor.spawn(function()
+    vlr.spawn(function()
       while not self.closed do
         local d, e = self:readsome(4096)
         if d then

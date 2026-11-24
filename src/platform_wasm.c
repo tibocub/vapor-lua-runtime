@@ -70,7 +70,7 @@ void vlr_wasm_run(lua_State *L)
 }
 
 /*
- * The page pushes input events itself (no terminal to decode): vapor.push(name, s, ints...) with nint integers.
+ * The page pushes input events itself (no terminal to decode): vlr.push(name, s, ints...) with nint integers.
  * char: ("char", text)   key: ("key", name, mods)   mouse: ("mouse", action, button, x, y, mods)   resize: ("resize", cols, rows)
  * (s may be NULL for resize).
  */
@@ -80,7 +80,9 @@ EMSCRIPTEN_KEEPALIVE void vlr_wasm_push(const char *name, const char *s, int nin
 
     if (g_L == NULL) return;
     ints[0] = a; ints[1] = b; ints[2] = c; ints[3] = d;
-    lua_getglobal(g_L, "vapor");
+    lua_getfield(g_L, LUA_REGISTRYINDEX, "_LOADED");
+    lua_getfield(g_L, -1, "vlr");
+    lua_remove(g_L, -2);
     lua_getfield(g_L, -1, "push");
     lua_remove(g_L, -2);
     lua_pushstring(g_L, name);

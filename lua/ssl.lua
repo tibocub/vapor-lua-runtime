@@ -1,10 +1,10 @@
--- ssl: the LuaSec API subset a client needs, over vapor.tls (BearSSL). Code written for LuaSec runs unchanged:
+-- ssl: the LuaSec API subset a client needs, over vlr.tls (BearSSL). Code written for LuaSec runs unchanged:
 --   local conn = ssl.wrap(sock, {mode = "client", protocol = "any", verify = "peer", cafile = "/path/ca.pem"})
 --   conn:sni(host); assert(conn:dohandshake()); conn:send(...); conn:receive(...); conn:close()
 -- Differences from LuaSec (shortcuts): the certificate chain and host name are ALWAYS verified, whatever `verify` says (there is no way to turn it off);
 -- the host name checked is the one given to :sni(host), which must be called before :dohandshake(); client mode only; no client certificates,
 -- `protocol`, `options`, `ciphers` and `capath` are accepted and ignored (BearSSL picks TLS 1.0-1.2 suites); no :getpeercertificate().
-local tls = require("vapor.tls")
+local tls = require("vlr.tls")
 local M = {_VERSION = "0.1 (vlr, LuaSec client subset)"}
 
 local Conn = {}

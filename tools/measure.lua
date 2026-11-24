@@ -1,3 +1,4 @@
+local vlr = require("vlr")
 -- Measurements for small targets: vlr measure.lua mem | speed | sched | compile | depth
 -- Prints "name value" lines; sizes in bytes unless noted. One section per run (the RP2040 console wedges on long runs).
 local what = arg[1] or "mem"
@@ -14,8 +15,8 @@ if what == "mem" then
   out("coroutine_bytes", (kb() - b) * 1024 / 100)
   t = nil; collectgarbage() -- free them: the next measurement must not run on top of 88 KB of idle coroutines
   b = kb()
-  for i = 1, 50 do vapor.spawn(function() vapor.sleep(0.5) end) end
-  vapor.sleep(0.05) -- let them all park
+  for i = 1, 50 do vlr.spawn(function() vlr.sleep(0.5) end) end
+  vlr.sleep(0.05) -- let them all park
   out("parked_task_bytes", (kb() - b) * 1024 / 50)
   b = kb(); local tt = {}
   for i = 1, 1000 do tt[i] = i end
@@ -33,12 +34,12 @@ elseif what == "speed" then
 elseif what == "sched" then
   -- cost of the scheduler itself
   local t = os.clock(); local n = 2000
-  vapor.spawn(function() for i = 1, n do vapor.sleep(0) end end)
-  vapor.spawn(function() for i = 1, n do vapor.sleep(0) end end)
-  vapor.sleep(0)
-  local t0 = vapor.now()
-  for i = 1, 20 do vapor.sleep(0.01) end
-  local dt = vapor.now() - t0
+  vlr.spawn(function() for i = 1, n do vlr.sleep(0) end end)
+  vlr.spawn(function() for i = 1, n do vlr.sleep(0) end end)
+  vlr.sleep(0)
+  local t0 = vlr.now()
+  for i = 1, 20 do vlr.sleep(0.01) end
+  local dt = vlr.now() - t0
   out("sleep_10ms_x20_total_ms", dt)
   out("sleep_10ms_avg_overshoot_ms", (dt - 200) / 20)
 

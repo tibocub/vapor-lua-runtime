@@ -1,4 +1,4 @@
-/* vapor.netraw backend for Windows: Winsock, non-blocking, polled by vlr_wait (WSAPoll). Handles are SOCKETs cast to int. */
+/* vlr.netraw backend for Windows: Winsock, non-blocking, polled by vlr_wait (WSAPoll). Handles are SOCKETs cast to int. */
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <stdio.h>

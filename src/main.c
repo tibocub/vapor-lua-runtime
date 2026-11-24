@@ -25,7 +25,7 @@ int main(int argc, char **argv)
         code_text = argv[i + 1];
         i += 2;
     } else if (i >= argc || strcmp(argv[i], "-i") == 0) {
-        code_text = "require('vapor.repl')()";
+        code_text = "require('vlr.repl')()";
         if (i < argc) i++;
     }
     L = vlr_newstate(dialect51, NULL, NULL);
