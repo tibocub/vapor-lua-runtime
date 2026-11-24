@@ -1,8 +1,13 @@
 # vlr: the Vapor Lua Runtime
 
-A small, portable Lua runtime for writing general-purpose programs (the things people write in Python or Node) that
-run unchanged on a desktop, in a browser and on a microcontroller. It is to Lua and LuaRocks what
-[Bare](https://github.com/holepunchto/bare) is to JavaScript and Node: a small core with optional modules.
+A small Lua runtime for the places where stock Lua cannot build or load C libraries: the browser (WebAssembly), microcontrollers
+(NuttX, RP2040) and single static binaries. Libraries such as lfs, lpeg and cjson are compiled into the runtime and behave exactly as
+if they had been installed from LuaRocks, so a program written for them runs unchanged on stock Lua, LuaJIT and vlr.
+On a desktop vlr is supported but optional: plain `lua` or `luajit` plus [vpm](https://github.com/tibocub/vapor-package-manager) is the intended setup.
+
+**The rule:** code that runs on vlr must also run on official Lua. vlr adds no syntax and aims to add no API of its own: it provides
+the libraries people already use (`lfs`, `lpeg`, `cjson`, `socket`, `ed25519`, ...) under their usual names. The few `vapor.*` and
+`std.*` modules that still exist are being replaced by those (see [docs/roadmap.md](docs/roadmap.md)) and should not be used in portable code.
 
 "vlr" is a working name.
 
@@ -27,7 +32,7 @@ Needs a C compiler, make, git, curl and tar.
 
 ```sh
 git clone https://github.com/tibocub/vapor-lua-runtime vlr && cd vlr
-sh tools/fetch-deps.sh        # clones lfs, lpeg, cjson, vaporUI, Monocypher, BearSSL next to this folder
+sh tools/fetch-deps.sh        # clones lfs, lpeg, cjson, vaporUI, ed25519, BearSSL next to this folder
 make                          # builds ./vlr (a few seconds)
 ./vlr -e 'print("hello from vlr " .. vapor.version)'
 make test                     # runs the suite
@@ -72,13 +77,24 @@ Where the platform allows it (`vapor.caps.dlopen`), C modules installed by vpm l
 ## Building variants
 
 ```sh
-make MODULES="vapor.fs vapor.input"        # a smaller binary with only some modules (empty = all)
-make STATIC=1                              # no dlopen (the old fully static binary)
-make TARGET=win32 CC=x86_64-w64-mingw32-gcc    # Windows
-make TARGET=web                            # WebAssembly (needs emsdk); see web/
+make MODULES="vapor.fs vapor.input"             # a smaller binary with only some modules (empty = all)
+make STATIC=1                                   # no dlopen (the old fully static binary)
+make TARGET=win32 CC=x86_64-w64-mingw32-gcc     # Windows
+make TARGET=web                                 # WebAssembly (needs emsdk); see web/
 ```
 
 More in [docs/building.md](docs/building.md).
+
+
+## How it relates to other runtimes
+
+| Runtime | Relation |
+|---|---|
+| PUC Lua 5.1-5.4, LuaJIT | The reference. Anything portable runs there too; vlr exists for the targets they do not reach (WASM, NuttX, RP2040) and to bundle native libraries into one binary. |
+| [Luvit](https://github.com/luvit/luvit), [Evo](https://github.com/evo-lua/evo-runtime), [Ulua](https://github.com/uluadist/ulua) | Desktop runtimes with their own APIs (libuv). vlr does not compete with them on the desktop and does not copy their APIs: its goal is to stay interchangeable with stock Lua. |
+
+Lua version: the default dialect is 5.1 (what PUC 5.1 and LuaJIT accept) on the Lua 5.4 engine; `--dialect=5.4` switches to plain 5.4. A program
+picks one version, like a LuaRocks package (`lua >= 5.1` in its rockspec); versions are never mixed in one process.
 
 ## Repository layout
 
@@ -106,5 +122,4 @@ in `tests/` and must pass in both the normal and the `--step` loop mode. CI runs
 
 ## License
 
-No license has been chosen yet; until one is added, all rights are reserved by the author. Lua itself is MIT-licensed (`third_party/lua`),
-and the sibling projects keep their own licenses.
+MIT
