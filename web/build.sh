@@ -6,3 +6,4 @@ for d in ${VAPORUI:-../../vaporUI}/bindings/lua/examples/*/; do
   n=$(basename "$d"); mkdir -p "dist/examples/$n" && cp "$d"*.lua "dist/examples/$n/" || exit 1
   (cd "dist/examples/$n" && printf '[%s]' "$(ls *.lua | sed 's/.*/"&"/' | paste -sd, -)" > files.json)
 done
+(cd dist/examples && ls -d */ | tr -d /) | paste -sd, - | sed 's/[^,]*/"&"/g; s/^/[/; s/$/]/' > dist/examples/index.json # the list the playground shows
