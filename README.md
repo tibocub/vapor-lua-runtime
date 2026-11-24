@@ -6,8 +6,9 @@ if they had been installed from LuaRocks, so a program written for them runs unc
 On a desktop vlr is supported but optional: plain `lua` or `luajit` plus [vpm](https://github.com/tibocub/vapor-package-manager) is the intended setup.
 
 **The rule:** code that runs on vlr must also run on official Lua. vlr adds no syntax and aims to add no API of its own: it provides
-the libraries people already use (`lfs`, `lpeg`, `cjson`, `socket`, `ed25519`, ...) under their usual names. The few `vapor.*` and
-`std.*` modules that still exist are being replaced by those (see [docs/roadmap.md](docs/roadmap.md)) and should not be used in portable code.
+the libraries people already use (`lfs`, `lpeg`, `cjson`, `socket`, `ssl`, `copas`, `ed25519`, `vaporui`, ...) under their usual names.
+There is no `vapor` global and no `std` library; `require("vlr")` is the runtime's own internals (scheduler, `vlr.net`, `vlr.tls`, ...)
+and portable code does not use it.
 
 "vlr" is a working name.
 
@@ -34,50 +35,39 @@ Needs a C compiler, make, git, curl and tar.
 git clone https://github.com/tibocub/vapor-lua-runtime vlr && cd vlr
 sh tools/fetch-deps.sh        # clones lfs, lpeg, cjson, vaporUI, ed25519, BearSSL next to this folder
 make                          # builds ./vlr (a few seconds)
-./vlr -e 'print("hello from vlr " .. vapor.version)'
+./vlr -e 'print(_VERSION)'
 make test                     # runs the suite
 ```
 
-A program that uses the event loop:
+After `vpm i copas`, a program written for luasocket and copas runs unchanged:
 
 ```lua
--- ticker.lua
-vapor.spawn(function()
-  for i = 1, 3 do vapor.sleep(0.5); print("tick", i) end
-end)
-vapor.spawn(function()
-  local c = assert(require("vapor.net").connect("example.org", 80, 5))
-  c:write("HEAD / HTTP/1.0\r\nHost: example.org\r\n\r\n")
-  print(c:read("l"))
-end)
-```
-
-```sh
-./vlr ticker.lua              # both tasks run side by side; the script ends when nothing is left to wait for
+local copas = require("copas")
+local http = require("copas.http")
+copas.addthread(function() print((http.request("http://example.org/"))) end)
+copas.loop()
 ```
 
 ## Using it
 
 ```
 vlr script.lua [args]      run a script
-vlr folder [args]          run an app folder (manifest.lua + main.lua, see docs/api.md)
 vlr -e 'code'              run a chunk
 vlr                        interactive prompt (also: vlr -i)
 vlr --dialect=5.4 ...      plain Lua 5.4 instead of the 5.1 dialect
 ```
 
-The API lives on the global `vapor` table: `vapor.spawn`, `vapor.sleep`, `vapor.pull` (events), `vapor.input`, `vapor.fs`, `vapor.caps`
-(what this build and platform can do), and so on. Optional modules load on first use and are `nil` in builds without them.
-Reference: [docs/api.md](docs/api.md), networking: [docs/net.md](docs/net.md). More examples: `examples/snake` (a terminal game),
-`examples/httpd` (a small web app), and `tests/`, which doubles as executable documentation.
+Libraries (`lfs`, `socket`, `ssl`, `cjson`, `lpeg`, `vaporui`, ...) are used exactly as with stock Lua. The runtime's own internals
+(`require("vlr")`: scheduler, `vlr.net`, `vlr.tls`) are documented in [docs/api.md](docs/api.md) for people working on vlr; networking: [docs/net.md](docs/net.md).
+`tests/` doubles as executable documentation.
 
 Packages come from [vpm](https://github.com/tibocub/vapor-package-manager): `vpm i lpeg`, `vpm search json --works`.
-Where the platform allows it (`vapor.caps.dlopen`), C modules installed by vpm load from `./lua_modules`.
+Where the platform allows it (when `package.loadlib` can load shared objects), C modules installed by vpm load from `./lua_modules`.
 
 ## Building variants
 
 ```sh
-make MODULES="vapor.fs vapor.input"             # a smaller binary with only some modules (empty = all)
+make MODULES="lfs cjson"             # a smaller binary with only some modules (empty = all)
 make STATIC=1                                   # no dlopen (the old fully static binary)
 make TARGET=win32 CC=x86_64-w64-mingw32-gcc     # Windows
 make TARGET=web                                 # WebAssembly (needs emsdk); see web/

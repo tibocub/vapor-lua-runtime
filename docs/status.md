@@ -6,18 +6,18 @@ As of 2026-11-24, version 0.2.0 plus unreleased work. This page says what is act
 
 | area | state |
 |---|---|
-| Core: scheduler, timers, events, `vapor.step`, 5.1 dialect and `--dialect=5.4` | 62 suite runs pass on Linux (also under ASan/UBSan); same suite on macOS, Windows, WebAssembly in CI |
+| Core: scheduler, timers, events, `vlr.step`, 5.1 dialect and `--dialect=5.4` | 62 suite runs pass on Linux (also under ASan/UBSan); same suite on macOS, Windows, WebAssembly in CI |
 | Console input (keys, mouse, resize, paste) | Linux/macOS terminals (pty test), Windows console (real Windows, cmd, PowerShell, wezterm), WebAssembly byte path |
-| `vapor.fs`, `os.execute`, app folders with manifests, `-e`, REPL | pass wherever the platform has them |
+| `os.execute`, `-e`, REPL | pass wherever the platform has them |
 | Networking: TCP/UDP, streams, name lookup without blocking | Linux, wine, real Windows, NuttX simulator with host networking |
-| TLS (BearSSL), chain and host name always verified; `std.http` client; `std.httpd` server | local openssl server tests; manual checks against public hosts; Windows trust store plus built-in root list |
+| TLS (BearSSL), chain and host name always verified; `socket.http`/`ssl.https` client | local openssl server tests; manual checks against public hosts; Windows trust store plus built-in root list |
 | LuaSocket compatibility (`socket`, `ltn12`, `mime`, `socket.url`, `socket.http`) | tests, and unmodified pure-Lua rocks run through vpm |
-| `ed25519` (rock, formerly `vapor.sign`) | used by vpm to verify the signed index |
+| `ed25519` (rock, formerly `vlr.sign`) | used by vpm to verify the signed index |
 | C rocks: `.so` loading (posix), compile into the binary, 5.1 C API shim | exercised against hundreds of real rocks through vpm (see the vpm status page) |
 | WebAssembly build, playground, wterm page | Node suite in CI; headless Firefox; typing into wterm by hand not done |
 | NuttX simulator, RP2040 | built and run in the vaporOS repository; vlr replaced vlua there |
 
-Sizes: host binary about 1.3 MB unstripped with everything, 274 KB stripped with only `vapor.fs`. RP2040: about 140 KB of flash for vlr itself, 30 KB of Lua heap for an empty script (details in spec.md).
+Sizes: host binary about 1.3 MB unstripped with everything, 274 KB stripped with only `lfs`. RP2040: about 140 KB of flash for vlr itself, 30 KB of Lua heap for an empty script (details in spec.md).
 
 ## Not verified or not done
 
@@ -27,9 +27,9 @@ Sizes: host binary about 1.3 MB unstripped with everything, 274 KB stripped with
 - macOS: builds and passes the suite in CI; dlopen of rocks built by vpm is untested there (needs `-undefined dynamic_lookup`-style link flags handled by vpm).
 - Windows: no dlopen (`.dll` loading is not implemented); C rocks must be bundled into the binary.
 - DNS: blocking on NuttX and wasm; the first address returned is used.
-- No compression, proxies, cookies or keep-alive in `std.http`; `std.httpd` is for local and development use.
-- Not implemented: `vapor.worker`, subprocess spawn with pipes, `vapor.gfx`, security sandbox, bytecode distribution, LuaJIT engine.
+- No compression, proxies, cookies or keep-alive in `socket.http`.
+- Not implemented: `vlr.worker`, subprocess spawn with pipes, `vlr.gfx`, security sandbox, bytecode distribution, LuaJIT engine.
 - No license file yet.
 
 ## Stability
-The names frozen in 0.2 (see [api.md](api.md)) will not change in a minor release. Networking, TLS, HTTP, `vapor.ui`, `vapor.manifest`, the REPL and the 5.1 C-API shim are experimental.
+The names frozen in 0.2 (see [api.md](api.md)) will not change in a minor release. Networking, TLS, HTTP, `vlr.ui`, `vlr.manifest`, the REPL and the 5.1 C-API shim are experimental.

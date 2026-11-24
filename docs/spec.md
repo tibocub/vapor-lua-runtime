@@ -1,3 +1,5 @@
+> **Historical design notes.** Since 2026-11-24 vlr has no `vapor`/`std` API, no app folders, no console input or `vlr.fs`: see README.md, api.md and roadmap.md for what exists. Sections below about those are kept as the record of the earlier design.
+
 # vlr: portable Lua runtime (vapor lua runtime)
 
 > Design record and measurements, kept as history. Current state: [status.md](status.md); structure: [architecture.md](architecture.md); plans: [roadmap.md](roadmap.md). Where this file disagrees with them, they win.
@@ -17,26 +19,26 @@ core with optional modules.
 
 **Decided (2026-11-21, design interview):**
 
-1. **Core vs modules.** Core: Lua, the scheduler, the event queue, timers, the console. `vapor.fs`, `vapor.net`, `vapor.gfx`, workers and
+1. **Core vs modules.** Core: Lua, the scheduler, the event queue, timers, the console. `vlr.fs`, `vlr.net`, `vlr.gfx`, workers and
    the `std` helpers are optional modules, each with its backend part and the targets it supports. The global `vapor` is a lazy facade
-   that loads a module on first access; `require("vapor.fs")` also works.
+   that loads a module on first access; `require("vlr.fs")` also works.
 2. `vapor.*` stays minimal: only what plain Lua cannot do. `std.*` is optional pure-Lua batteries that a small build leaves out.
 3. **Ecosystem.** C Lua libraries (5.1 to 5.4 API) compile in without source changes. `vlr-build` reads LuaRocks rockspecs to add
    native modules (`modules.conf` becomes the generated lock). The real `luarocks` should run on desktop vlr; vpm stays the preferred CLI
    and the on-device tool.
-4. **Apps** are loose scripts plus a manifest (name, version, needed `vapor.caps`, needed built-in modules, entry point). No single-file
+4. **Apps** are loose scripts plus a manifest (name, version, needed `vlr.caps`, needed built-in modules, entry point). No single-file
    bundle format yet.
-5. **Parallelism.** One primitive: an optional `vapor.worker(file)` (isolated Lua state, own scheduler, copied-value messages; pthread,
-   Windows thread, Web Worker), plus subprocess spawn with pipes on desktops. No shared-memory threads. Reported in `vapor.caps`.
+5. **Parallelism.** One primitive: an optional `vlr.worker(file)` (isolated Lua state, own scheduler, copied-value messages; pthread,
+   Windows thread, Web Worker), plus subprocess spawn with pipes on desktops. No shared-memory threads. Reported in `vlr.caps`.
 6. **UI.** vaporUI keeps one cell-grid model with output surfaces: terminal, framebuffer cell-renderer (SDL window, `/dev/fb`, web
-   canvas), shared bitmap font. `vapor.gfx` is a separate low-level pixel surface, only when a program needs it. Image and video
+   canvas), shared bitmap font. `vlr.gfx` is a separate low-level pixel surface, only when a program needs it. Image and video
    rendering in the terminal (ASCII, half-blocks, Sixel/Kitty) is a later optional module.
 7. **Security.** The default is trusted, like Node. A tiered security milestone is studied and planned when we reach it (text-only
    `load` by default, memory and instruction limits, an opt-in sandbox, manifest-declared capabilities, TLS verification). Hostile code
    needs a separate process or the WASM build; the docs will say so.
 8. **API stability.** Version 0.2 freezes the core names (`pull`, `sleep`, `wait_fd`, `step`, `input`, `fs`, `caps`, `version`,
    `builtin`, `platform`) after the module split. New areas start experimental and graduate after real use. Semantic versioning on
-   `vapor.version`. The 5.1-compatible dialect stays the default for the life of the project; plain 5.4 is opt-in.
+   `vlr.version`. The 5.1-compatible dialect stays the default for the life of the project; plain 5.4 is opt-in.
 9. **Targets.** Done: Linux, Windows, WASM, NuttX sim, RP2040. Next: macOS through CI. No native Android or iOS: mobile goes through
    HyperBrowser if the WASM build performs well. Embedding in HyperBrowser waits for WASM performance numbers.
 10. **vlua** is replaced by vlr in vaporOS once vlr is no heavier on the RP2040 than vlua.
@@ -67,8 +69,8 @@ Rules for the core (Doom/uxn style, so a port is a weekend, not a project):
 ## Execution model: one event queue
 
 - A program is a coroutine run by the scheduler. It never blocks the process.
-- `vapor.pull(timeout) -> ev, ...` yields until an event or the timeout (ComputerCraft's `os.pullEvent`).
-- `vapor.sleep(s)`, sockets, `io.read` on stdin and timers are built on it by the scheduler (a coroutine-aware
+- `vlr.pull(timeout) -> ev, ...` yields until an event or the timeout (ComputerCraft's `os.pullEvent`).
+- `vlr.sleep(s)`, sockets, `io.read` on stdin and timers are built on it by the scheduler (a coroutine-aware
   wrapper), so plain scripts still look blocking and just work.
 - Events are `(name, a, b, c)` tuples: `key`, `char`, `mouse`, `resize`, `timer`, `readable`, `writable`, `quit`.
 - Why: the browser cannot block, so blocking-inside-the-loop is not portable; this model is the only one all
@@ -88,7 +90,7 @@ Required (small on purpose, target < 15 functions):
 | `vlr_net_*` | optional (caps) |
 | `vlr_gfx_*`, `vlr_audio_*` | optional (caps); reuse vaporUI backends where possible |
 
-`vapor.caps` is a table of booleans (`fs`, `net`, `gfx`, `audio`, `tty`, `gpio`...) so an app can degrade.
+`vlr.caps` is a table of booleans (`fs`, `net`, `gfx`, `audio`, `tty`, `gpio`...) so an app can degrade.
 
 ## Native modules: static always, dynamic where the OS allows
 
@@ -146,13 +148,13 @@ Proposed:
 - No FFI in portable code; no reliance on the integer/float distinction, `//`, `&`/`|`, `goto`; bit operations
   through a provided `bit` module (the LuaJIT `bit` API, implemented on 5.4 by a tiny C module).
 - The conformance suite runs on **both** engines; engine is a build option (`ENGINE=puc|luajit`) and
-  `vapor.runtime.engine` / `.jit` report it.
+  `vlr.runtime.engine` / `.jit` report it.
 - Programs that want 5.4 features may declare `vlr.dialect = "5.4"` and are then not offered on JIT builds.
   Tension with vlua's 64-bit-integer decision: kept for the PUC engine, just not relied upon by portable code.
 
 ## Device awareness (profile) and vpm
 
-Each build emits a **profile** (generated, read-only, e.g. `/lib/vlr/profile.lua`, also `vapor.runtime`):
+Each build emits a **profile** (generated, read-only, e.g. `/lib/vlr/profile.lua`, also `vlr.runtime`):
 
 ```lua
 { runtime = "0.1", engine = "puc", jit = false, dialect = "5.1+",
@@ -216,15 +218,15 @@ not only Lua. A target is "supported" when it passes. Known per-target skips are
   "same code on LuaJIT" and keep JIT out of scope?
 - Dynamic modules on Linux: prebuilt binaries per platform, or build from source on install (needs a compiler)?
 - Name, and whether this lives in vaporOS or stays separate (leaning separate: vaporOS depends on it).
-- `vapor.pull` event names for gamepad/touch/IME.
+- `vlr.pull` event names for gamepad/touch/IME.
 - Is `vlr_wait` plus `vlr_poll_event` one call? (decide while writing the posix backend)
-- Does `io.read` on stdin get coroutine-wrapped, or only `vapor.read`?
+- Does `io.read` on stdin get coroutine-wrapped, or only `vlr.read`?
 
 ## Status (2026-11-20)
 
 Backends passing the same suite (`tests/*.lua`, each in normal and `--step` mode): Linux (posix), Windows (mingw
 under wine), WASM (emscripten under Node, no Asyncify), NuttX simulator (vaporOS `sim-vlr`, via the posix backend
-unchanged). RP2040-Zero (vaporOS `rp2040-vlr`, flashed 2026-11-20): `sched`, `events`, `compat51`, `dialect54`, `modules`, `exec`, `exec54` pass; `fs` passes from a writable directory (from `/`, a pseudo-filesystem, creating files fails by design). `fd` not run on the board (needs console input). Browser (`make TARGET=web`, 373 KB wasm + 194 KB glue JS): the suite passes under Node (`VLR="node web/run.mjs" sh tests/run.sh`) and the playground page `web/index.html` ran a script with sleeps and console input in headless Firefox (output and `io.read` after `vapor.wait_fd(0)` verified). Not yet run: real Windows, a browser with a person typing, wterm.
+unchanged). RP2040-Zero (vaporOS `rp2040-vlr`, flashed 2026-11-20): `sched`, `events`, `compat51`, `dialect54`, `modules`, `exec`, `exec54` pass; `fs` passes from a writable directory (from `/`, a pseudo-filesystem, creating files fails by design). `fd` not run on the board (needs console input). Browser (`make TARGET=web`, 373 KB wasm + 194 KB glue JS): the suite passes under Node (`VLR="node web/run.mjs" sh tests/run.sh`) and the playground page `web/index.html` ran a script with sleeps and console input in headless Firefox (output and `io.read` after `vlr.wait_fd(0)` verified). Not yet run: real Windows, a browser with a person typing, wterm.
 
 Measured (build only, no board connected): RP2040 image text size, `arm-none-eabi-size`:
 
@@ -238,7 +240,7 @@ and stack on the board are unmeasured.
 
 RP2040 heap: `free` after 20 runs of `events.lua` grew by 200 bytes (no leak); peak used 120 KB of 244 KB during the suite.
 
-`os.execute` is `vlr_exec` in the platform interface: `system()` on POSIX/Windows, `vaporshell -c` on NuttX (works on the sim and the RP2040), unavailable on wasm (`vapor.caps.exec` false).
+`os.execute` is `vlr_exec` in the platform interface: `system()` on POSIX/Windows, `vaporshell -c` on NuttX (works on the sim and the RP2040), unavailable on wasm (`vlr.caps.exec` false).
 
 NuttX quirks found: no `system()` here (hence `vlr_exec`), `environ` is a macro from `<stdlib.h>` (not linkable), and `stat(".")` fails
 (a relative "." is not resolved), so tests and modules must use real paths.
@@ -276,16 +278,16 @@ image, and a larger-script comparison between source and bytecode.
 `web/vlr.js` + `web/vlr.wasm`: an ES module factory `createVlr()`. `web/vlr-glue.js` (`startVlr`) puts files in MEMFS, calls main, and
 feeds stdin; `web/index.html` is a playground (editor, dialect choice, output, input line). Serve `web/` with any static server.
 No Asyncify and no threads: the loop is driven by JS timers calling `vlr_step`; input calls `vlr_wasm_wake`.
-Stdin rule: scripts wait with `vapor.wait_fd(0)` and then read; a read on an empty buffer returns EOF (a browser cannot block).
-`os.execute` is unavailable there (`vapor.caps.exec == false`). Each Run creates a fresh instance (one Lua state per run).
+Stdin rule: scripts wait with `vlr.wait_fd(0)` and then read; a read on an empty buffer returns EOF (a browser cannot block).
+`os.execute` is unavailable there (`vlr.caps.exec == false`). Each Run creates a fresh instance (one Lua state per run).
 Limits: output is line-buffered by emscripten (`vlr_flush` pushes a partial last line at exit); no keyboard/mouse/resize
 events yet (that is the next milestone), no wterm yet (plain `<pre>`).
 
-## Input events (`vapor.input`)
+## Input events (`vlr.input`)
 
-`vapor.input(true | {mouse = 0|1|2})` puts the console in raw mode and delivers `vapor.pull` events: `char, text`;
+`vlr.input(true | {mouse = 0|1|2})` puts the console in raw mode and delivers `vlr.pull` events: `char, text`;
 `key, name, mods` (1 shift, 2 alt, 4 ctrl); `mouse, action, button, x, y, mods` (press, release, drag, move, scroll_up/down; 1-based);
-`resize, cols, rows`; `quit` at end of input. `vapor.input(false)` (or exit, via a gc guard) restores the terminal.
+`resize, cols, rows`; `quit` at end of input. `vlr.input(false)` (or exit, via a gc guard) restores the terminal.
 Bytes are decoded by vaporUI's decoder (`../vaporUI/src/input.c`, vt.c, utf8.c, scancode.c; a sibling checkout like lfs, tracking its latest version on purpose; replaced `src/vtinput.c`; adds kitty, modifyOtherKeys, bracketed paste, base/scancode; +24 KB on the host build, matters for RP2040). The old description (pure C: UTF-8, CSI/SS3 keys with modifiers, Shift+Tab, Alt+key, SGR mouse, split sequences,
 lone-ESC after 25 ms). The platform adds `vlr_console_read/raw/size`. Windows uses VT input mode (same decoder).
 Web: the page pushes the same events via `vlr.event(...)` / `attachEvents(el, vlr, cell)` in `web/vlr-glue.js`.
@@ -296,44 +298,44 @@ Also: `VLR_STRIP_INTERNAL` strips debug info from our own Lua (heap -3.4 KB on h
 
 ### RP2040 re-check with input events (2026-11-21)
 
-Image rebuilt with vtinput, `vapor.input` and `VLR_STRIP_INTERNAL=1`; flashed. `decode`, `sched`, `events`, `compat51`, `dialect54`
-(with `--dialect=5.4`) pass on the board. Strip confirmed active (`debug.getinfo(vapor.sleep, "L")` has 0 active lines vs 5 unstripped).
-Real console path over USB CDC: `vapor.input(true)` received a char, an Up arrow and an SGR mouse press typed from the host
+Image rebuilt with vtinput, `vlr.input` and `VLR_STRIP_INTERNAL=1`; flashed. `decode`, `sched`, `events`, `compat51`, `dialect54`
+(with `--dialect=5.4`) pass on the board. Strip confirmed active (`debug.getinfo(vlr.sleep, "L")` has 0 active lines vs 5 unstripped).
+Real console path over USB CDC: `vlr.input(true)` received a char, an Up arrow and an SGR mouse press typed from the host
 (`EV char,a / key,up,0 / mouse,press,1,5,6,0`). Lua heap at start of a script: 31.8 KB (before/after the strip not measured on the board;
 host: 40.5 -> 37.0 KB). Also passing on the board afterwards: `fs` (from /flash), `exec`, `exec54`, `modules`, `fd` (needs `< /dev/null`: a console is never readable), and lfs's own suite (`Ok!`, needs `/tmp`: `mkdir /tmp` first). The stale corrupted `/flash/t` entry is gone.
 
 ### Browser terminal (wterm)
 
 `web/term.html` + `web/term.js` (bundle with `web/build.sh`, needs bun): vlr in a wterm terminal. stdout bytes go to the terminal;
-its output bytes are the stdin queue and the escape sequences `vapor.input()` decodes (wasm `vlr_console_read` reads `Module.vlrIn`), so keys,
+its output bytes are the stdin queue and the escape sequences `vlr.input()` decodes (wasm `vlr_console_read` reads `Module.vlrIn`), so keys,
 mouse and resize behave as on a native tty; resize goes through `vlr.resize`. `?script=<url>` loads a script, `?dialect=5.4` selects plain 5.4.
 Verified: output renders in headless Firefox, byte-level input path in Node (`web/ev-test.mjs`); typing into wterm itself not tried by hand.
 
 ## Identity and build profiles
 
-`vapor.version`, `vapor.platform` (linux, windows, macos, nuttx, wasm, posix) and `vapor.builtin` (set of compiled-in module names, generated
-with the registry) let a package manager see what the device already satisfies; `tests/identity.lua` keeps `vapor.builtin` and
+`vlr.version`, `vlr.platform` (linux, windows, macos, nuttx, wasm, posix) and `vlr.builtin` (set of compiled-in module names, generated
+with the registry) let a package manager see what the device already satisfies; `tests/identity.lua` keeps `vlr.builtin` and
 `package.preload` in sync. `tools/vlr-build [profile]` builds a vlr with a chosen module set for a target from a small `key = value`
 profile (`tools/mini.vlrprofile`: posix, lfs only: 324 KB vs 395 KB with everything); `--list` shows the modules in `modules.conf`.
-Not built yet: the vpm side (a device-aware resolver that reads `vapor.builtin` and asks `vlr-build` for missing native modules).
+Not built yet: the vpm side (a device-aware resolver that reads `vlr.builtin` and asks `vlr-build` for missing native modules).
 
 ## Dynamic modules (optional)
 
-Since 2026-11-22 the posix host build has dlopen by default (`LUA_USE_DLOPEN`, links `-ldl -Wl,-E`, `vapor.caps.dlopen == true`): `require` also finds `.so` files on `package.cpath`,
+Since 2026-11-22 the posix host build has dlopen by default (`LUA_USE_DLOPEN`, links `-ldl -Wl,-E`, `vlr.caps.dlopen == true`): `require` also finds `.so` files on `package.cpath`,
 which is how vpm loads the C rocks it builds. `make STATIC=1` gives the old static binary. NuttX, wasm and Windows have no dlopen.
-`vapor.luaheaders` (generated `lua/luaheaders.lua`, `make headers`) carries Lua's headers: `require("vapor.luaheaders").write(dir)` lets a compiler build a module against exactly this runtime.
+`vlr.luaheaders` (generated `lua/luaheaders.lua`, `make headers`) carries Lua's headers: `require("vlr.luaheaders").write(dir)` lets a compiler build a module against exactly this runtime.
 Test: `tests/native_module.lua` (writes the headers, compiles a C module, loads it).
 Test: `sh tests/dynamic/run.sh`. Windows `.dll` loading is not done (Lua's loadlib would need `LoadLibrary` and an exported API).
 
 ## Module system, first cut (2026-11-21)
 
-`modules.conf` now also lists the optional parts of the vapor API: `vapor.fs` (`src/mod_fs.c`), `vapor.term` (`src/mod_term.c` + the decoder in
-`src/vtinput.c`) and `vapor.input` (`lua/input.lua`, a Lua-file module: `name lua:path`, embedded by `tools/mkmodules`). `@VLR@` in a path is the
-folder of `modules.conf`. A build lists the modules it wants (`MODULES=...`, empty = all); one without `vapor.fs` simply has `vapor.fs == nil`.
+`modules.conf` now also lists the optional parts of the vapor API: `vlr.fs` (`src/mod_fs.c`), `vlr.term` (`src/mod_term.c` + the decoder in
+`src/vtinput.c`) and `vlr.input` (`lua/input.lua`, a Lua-file module: `name lua:path`, embedded by `tools/mkmodules`). `@VLR@` in a path is the
+folder of `modules.conf`. A build lists the modules it wants (`MODULES=...`, empty = all); one without `vlr.fs` simply has `vlr.fs == nil`.
 The global `vapor` table is a lazy facade: `vapor.<name>` loads the registered module `vapor.<name>` on first access (only compiled-in
-modules count, no file search); `vapor.size` stays as an alias into `vapor.term`. The core now only has tasks, timers, events, `now`, `wait`,
-`caps`, identity. Optional modules reach the loop through two hooks in `lua/sched.lua`: `vapor._after(ms, fn)` and `vapor._source(fd, fn)`
-(a persistent readable-handle callback; `vapor.input` uses it for the console, `vapor.net` will for sockets).
+modules count, no file search); `vlr.size` stays as an alias into `vlr.term`. The core now only has tasks, timers, events, `now`, `wait`,
+`caps`, identity. Optional modules reach the loop through two hooks in `lua/sched.lua`: `vlr._after(ms, fn)` and `vlr._source(fd, fn)`
+(a persistent readable-handle callback; `vlr.input` uses it for the console, `vlr.net` will for sockets).
 Heap at start of a script (host, same one-line script): 46.1 KB before the split, 44.2 KB after (40.3 KB with the internal Lua stripped).
 Still to do for 0.2: app manifest check, rockspec reading in `vlr-build`, the 5.1 C-API shims test with more real rocks.
 
@@ -351,14 +353,14 @@ utf8 library symbol and its file is called `lutf8lib.c` like Lua's. Fixed in the
 ## Version 0.2.0 (2026-11-21)
 
 Module split, app manifests and rockspec reading are done, so the core names in `docs/api.md` are frozen (tag `v0.2.0`). Board check on the RP2040
-(`rp2040-vlr`, flashed): `identity`, `decode`, `sched`, `events`, `compat51`, `modules` pass; keys and mouse arrive through the lazy `vapor.input`; Lua heap at
+(`rp2040-vlr`, flashed): `identity`, `decode`, `sched`, `events`, `compat51`, `modules` pass; keys and mouse arrive through the lazy `vlr.input`; Lua heap at
 start of a script 30.3 KB (31.8 KB before the split). Not re-run on the board after the split: `fs`, `exec`, `fd`, the lfs suite. NuttX sim image builds.
 
 ## Networking, TLS, input backends (2026-11-21 evening)
 New since 0.2.0 (all experimental until used by a real app; core names unchanged):
-- `vapor.net` + `vapor.stream` (docs/net.md); `vapor.tls` (BearSSL engine `vapor.tlsraw` + `lua/tls.lua`, chain and host name always verified, roots from files, the Windows store and
-  the built-in list `vapor.cacerts`); `std.http` (HTTP/1.1 client); `socket` / `std.socket` (LuaSocket subset); `vapor.sign` (ed25519 verify, Monocypher); `vapor.close_fd`;
-  `vapor.repl` and `vlr -e CODE`; `VLR_LIBDIR`. vpm runs on vlr (HTTP/HTTPS through std.http, index signature through vapor.sign).
+- `vlr.net` + `vlr.stream` (docs/net.md); `vlr.tls` (BearSSL engine `vlr.tlsraw` + `lua/tls.lua`, chain and host name always verified, roots from files, the Windows store and
+  the built-in list `vlr.cacerts`); `std.http` (HTTP/1.1 client); `socket` / `std.socket` (LuaSocket subset); `vlr.sign` (ed25519 verify, Monocypher); `vlr.close_fd`;
+  `vlr.repl` and `vlr -e CODE`; `VLR_LIBDIR`. vpm runs on vlr (HTTP/HTTPS through std.http, index signature through vlr.sign).
 - Input: the terminal decoder is vaporUI's (sibling checkout, latest main on purpose); Windows reads native console records (`vlr_console_record`); a real Linux VT uses raw keycodes
   (`src/term_vt.c`, needs a hands-on test: docs/tty-test.md).
 - Verified: Linux (ASan/UBSan), wine, wasm/Node, real Windows (reports/), NuttX sim with host networking (HTTP, HTTPS with a mounted CA file, vpm starts). macOS and the Linux VT: CI / user.
@@ -367,11 +369,11 @@ Host build sizes, stripped (x86-64, `-O2`), by module set; the Lua heap right af
 
 | modules | stripped size | Lua heap at start |
 |---|---|---|
-| `vapor.fs` (smallest useful) | 274 KB | 44.8 KB |
-| + `vapor.term vapor.input` (vaporUI decoder, native key records) | 303 KB (+29) | 45.0 KB |
-| + `vapor.stream vapor.netraw vapor.net` instead of the terminal | 290 KB (+17) | - |
-| + TLS (`vapor.tlsraw vapor.tls`) and `vapor.cacerts` | +573 KB (BearSSL about 390, root list about 180) | 45.4 KB |
-| `vapor.sign` (Monocypher ed25519) | +57 KB | - |
+| `vlr.fs` (smallest useful) | 274 KB | 44.8 KB |
+| + `vlr.term vlr.input` (vaporUI decoder, native key records) | 303 KB (+29) | 45.0 KB |
+| + `vlr.stream vlr.netraw vlr.net` instead of the terminal | 290 KB (+17) | - |
+| + TLS (`vlr.tlsraw vlr.tls`) and `vlr.cacerts` | +573 KB (BearSSL about 390, root list about 180) | 45.4 KB |
+| `vlr.sign` (Monocypher ed25519) | +57 KB | - |
 | everything, with lfs, lpeg, cjson | 1037 KB | 46.9 KB (42.7 KB with `--dialect=5.4`: the 5.1 compat layer costs 4 KB) |
 
 The RP2040 numbers are in the section above (32-bit, about 30 KB at start); modules are chosen per board in Kconfig, so a board that does not need TLS or the decoder does not pay for them.

@@ -15,9 +15,9 @@ Lua 5.4.8 itself is in `third_party/lua`, with the small patches in `patches/`.
 | NuttX | built from the vaporOS repository, which includes this one (Kconfig chooses modules per board) |
 
 ## Choosing modules
-`modules.conf` lists every module and what it is built from. `make MODULES="vapor.fs vapor.input"` builds only those (empty means all).
+`modules.conf` lists every module and what it is built from. `make MODULES="lfs cjson"` builds only those (empty means all).
 `tools/vlr-build profile` does the same from a small profile file (`tools/mini.vlrprofile`); `tools/vlr-build --list` shows the names.
-Sizes by module set are in spec.md (a stripped build with only `vapor.fs` is about 274 KB, everything about 1 MB).
+Sizes by module set are in spec.md (a stripped build with only `lfs` is about 274 KB, everything about 1 MB).
 
 ## Adding C modules to a build
 - One rock from its rockspec: `tools/vlr-build add-rock ROCKSPEC SRCDIR [--write]` (builtin-type rockspecs only).

@@ -2,11 +2,11 @@
 
 ## Compatibility first (decided 2026-11-24, overrides the items below where they conflict)
 Rule: code that runs on vlr runs on official Lua 5.1 / LuaJIT / 5.4. vlr uses the standard library names and APIs and adds no syntax.
-- [x] `ed25519` is a standalone rock (github.com/tibocub/lua-ed25519); `vapor.sign` is a deprecated alias.
-- [x] `ssl` and `ssl.https` with luasec's client API over BearSSL (`vapor.tls` stays as the engine glue). vpm uses them; `std.http` is no longer needed by vpm.
+- [x] `ed25519` is a standalone rock (github.com/tibocub/lua-ed25519); `vlr.sign` is a deprecated alias.
+- [x] `ssl` and `ssl.https` with luasec's client API over BearSSL (`vlr.tls` stays as the engine glue). vpm uses them; `std.http` is no longer needed by vpm.
 - Real luasocket C code is not needed: blocking calls must yield to vlr's tasks, so `socket` stays a Lua subset with the LuaSocket API (smtp, ftp, headers missing).
 - [x] copas 4.12 (installed by vpm) runs unmodified on `socket`: `settimeout(0)` is a real non-blocking mode (connect/accept/receive return "timeout", never yield). `tests/socket_nb.lua` covers it.
-- [ ] `vapor.spawn/sleep/wait_fd` become internal; copas is the documented way to write concurrent code portable to stock Lua.
+- [ ] `vlr.spawn/sleep/wait_fd` become internal; copas is the documented way to write concurrent code portable to stock Lua.
 - [ ] One small `vlr` table for feature detection (`caps`, `builtin`, `platform`) that vpm reads; remove the rest of `vapor.*` and `std.*` after one minor release.
 - [ ] Dialect per program (`--lua=5.1|5.4` or a rockspec `lua` constraint); never mixed. A lint for 5.3-only syntax in 5.1 programs.
 - Dropped: LuaJIT engine inside vlr, partial JIT, transpilers, workers mixing versions.
@@ -18,10 +18,10 @@ Rule: code that runs on vlr runs on official Lua 5.1 / LuaJIT / 5.4. vlr uses th
 4. macOS: confirm that C rocks built by vpm load (dlopen link flags); fix in vpm or the Makefile.
 5. Windows: decide how C rocks work there (bundle only, or implement `.dll` loading); test the MSYS2 flow for vpm.
 6. Tag 0.3 once the experimental networking and HTTP names have survived real use by vpm; promote what is solid in api.md.
-7. Small gaps: socket options and `shutdown`, `std.http` keep-alive and gzip, IPv6, async name lookup on NuttX and wasm.
+7. Small gaps: socket options and `shutdown`, `socket.http` keep-alive and gzip, IPv6, async name lookup on NuttX and wasm.
 
 ## Next (months)
-- `vapor.worker` (isolated Lua state, own scheduler, copied-value messages; thread on desktop, Web Worker in the browser) and subprocess spawn with pipes.
+- `vlr.worker` (isolated Lua state, own scheduler, copied-value messages; thread on desktop, Web Worker in the browser) and subprocess spawn with pipes.
 - vaporUI framebuffer cell renderer (SDL window, `/dev/fb`, canvas): the same program in terminal, window and browser. Developed in the vaporUI repository.
 - Package tooling inside the runtime: running real `luarocks` on desktop vlr; vpm stays the preferred and on-device tool.
 - Security tier: text-only `load` by default, memory and instruction limits, opt-in sandbox, manifest-declared capabilities. Hostile code still needs a separate process or the WASM build; the docs will say so.
