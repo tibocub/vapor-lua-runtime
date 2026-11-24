@@ -270,26 +270,7 @@ lua_State *vlr_newstate(int dialect51, lua_Alloc alloc, void *ud)
 int vlr_spawn_file(lua_State *L, const char *path, int argc, char **argv)
 {
     int i;
-    vlr_stat st;
 
-    if (vlr_fs_stat(path, &st) == 0 && st.is_dir) {
-        /* an app folder: the manifest module checks it and runs its entry; the folder is the first argument */
-        static const char runner[] = "return require('vapor.manifest').main(...)";
-
-        if (luaL_loadstring(L, runner) != LUA_OK) return 1;
-        lua_getglobal(L, "vapor");
-        lua_getfield(L, -1, "spawn");
-        lua_remove(L, -2);
-        lua_insert(L, -2);
-        lua_pushstring(L, path);
-        for (i = 0; i < argc; i++) lua_pushstring(L, argv[i]);
-        if (lua_pcall(L, 2 + argc, 0, 0) != LUA_OK) {
-            fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
-            lua_pop(L, 1);
-            return 1;
-        }
-        return 0;
-    }
     if (luaL_loadfile(L, path) != LUA_OK) {
         fprintf(stderr, "vlr: %s\n", lua_tostring(L, -1));
         lua_pop(L, 1);

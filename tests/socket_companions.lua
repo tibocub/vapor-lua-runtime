@@ -45,17 +45,40 @@ local pp = url.parse_path("/a/b%20c/d/")
 assert(pp[1] == "a" and pp[2] == "b c" and pp.is_absolute and pp.is_directory and url.build_path(pp) == "/a/b%20c/d/")
 assert(url.parse("") == nil)
 
--- socket.http against std.httpd
+-- socket.http against a tiny server written with plain sockets (one task per connection)
 if vapor.caps.net then
-  local httpd, http = require("std.httpd"), require("socket.http")
-  local srv = assert(httpd.listen{port = 0, handler = function(req, res)
+  local http, socket = require("socket.http"), require("socket")
+  local function handler(req)
     if req.path == "/r" then return 302, "", {Location = "/hello"}
-    elseif req.path == "/hello" then return "hello " .. (req.query.name or "world")
+    elseif req.path == "/hello" then return 200, "hello " .. (req.query:match("name=(%w+)") or "world")
     elseif req.path == "/echo" then return 200, req.method .. ":" .. req.body .. ":" .. (req.headers.authorization or "-")
-    elseif req.path == "/big" then return ("z"):rep(100000) end
-    return 404
-  end})
-  local base = "http://127.0.0.1:" .. srv:port()
+    elseif req.path == "/big" then return 200, ("z"):rep(100000) end
+    return 404, ""
+  end
+  local listener = assert(socket.bind("127.0.0.1", 0))
+  local srv = {port = function() return select(2, listener:getsockname()) end}
+  vapor.spawn(function()
+    while true do
+      local c = listener:accept()
+      if not c then break end
+      vapor.spawn(function()
+        local line = c:receive("*l")
+        local method, target = line:match("^(%u+) (%S+)")
+        local path, query = target:match("^([^?]*)%??(.*)$")
+        local headers = {}
+        for l in function() local x = c:receive("*l"); if x ~= "" then return x end end do
+          local k, v = l:match("^([^:]+):%s*(.*)$"); headers[k:lower()] = v
+        end
+        local body = headers["content-length"] and c:receive(tonumber(headers["content-length"])) or ""
+        local code, text, extra = handler{method = method, path = path, query = query, headers = headers, body = body}
+        local out = {("HTTP/1.1 %d X\r\nContent-Length: %d\r\nConnection: close\r\n"):format(code, #text)}
+        for k, v in pairs(extra or {}) do out[#out + 1] = k .. ": " .. v .. "\r\n" end
+        c:send(table.concat(out) .. "\r\n" .. text)
+        c:close()
+      end)
+    end
+  end)
+local base = "http://127.0.0.1:" .. srv:port()
   local body, code, headers, status = http.request(base .. "/hello?name=lua")
   assert(body == "hello lua" and code == 200 and headers["content-length"] == "9" and status:find("200"), tostring(body) .. tostring(code))
   assert(http.request(base .. "/r") == "hello world", "redirect followed")
@@ -68,6 +91,6 @@ if vapor.caps.net then
   assert(c3 == 404)
   assert(select(2, http.request("https://example.org/")) == "unsupported scheme 'https'")
   assert(select(2, http.request("http://127.0.0.1:1/")) ~= nil, "connection refused is an error")
-  srv:close()
+  listener:close()
 end
 print("ok")

@@ -1,7 +1,6 @@
 -- the LuaSocket-compatible subset: code written for luasocket runs unchanged
 if not vapor.caps.net then return end
 local socket = require("socket")
-assert(require("std.socket") == socket or require("std.socket") ~= nil)
 
 local server = assert(socket.bind and socket.bind("127.0.0.1", 0) or (function()
   local m = socket.tcp(); assert(m:bind("127.0.0.1", 0)); return m:listen(5)

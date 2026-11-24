@@ -16,12 +16,6 @@ for t in tests/*.lua; do
     else echo "FAIL $t $mode"; cat "${TMPDIR:-/tmp}/vlr-test.err"; fail=1; fi
   done
 done
-# app folders: the good one runs its entry with a lua_modules helper, the bad one is refused with reasons and exit 1
-out=$($VLR tests/app/good x </dev/null 2>&1 | tr -d "\r")
-if [ "$out" = "hello app	x	tests/app/good/main.lua" ]; then echo "ok   app folder"; else echo "FAIL app folder: $out"; fail=1; fi
-out=$($VLR tests/app/bad </dev/null 2>&1); rc=$?; out=$(printf "%s" "$out" | tr -d "\r")
-if [ "$rc" = 1 ] && echo "$out" | grep -q "needs module nosuch" && ! echo "$out" | grep -q "must not run"; then echo "ok   app refused"; else echo "FAIL app refused (rc=$rc): $out"; fail=1; fi
-
 # rockspec -> modules.conf lines (tools/rock2conf.lua)
 if [ "$VLR" = ./vlr ]; then
   out=$(./vlr tools/rock2conf.lua tests/rock/toy-1.rockspec tests/rock 2>&1)
