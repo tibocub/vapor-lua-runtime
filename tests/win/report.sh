@@ -30,9 +30,9 @@ main() {
   [ -d ../lpeg-1.1.0 ] || curl -fsSL https://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz | tar -xz -C ..
   [ -d ../vaporUI ] && { git -C ../vaporUI pull -q --ff-only 2>/dev/null || echo "(vaporUI not updated: pull it by hand if the build fails)"; } # we track the latest vaporUI on purpose
   [ -d ../vaporUI ] || git clone -q --depth 1 https://github.com/tibocub/vaporUI ../vaporUI
-  [ -d ../Monocypher ] || { git clone -q https://github.com/LoupVaillant/Monocypher ../Monocypher && git -C ../Monocypher checkout -q ab2b16dd619ad5f6979a4fbe69cfa324a6fcc35f; }
+  [ -d ../ed25519 ] || { git clone -q https://github.com/tibocub/lua-ed25519 ../ed25519 && git -C ../ed25519 checkout -q v0.1; }
   [ -d ../BearSSL ] || { git clone -q https://www.bearssl.org/git/BearSSL ../BearSSL && git -C ../BearSSL checkout -q 7bea48e5e850ab4cafbe68d3765cdaba13a86d6f; }
-  ls -d ../BearSSL ../Monocypher ../vaporUI ../luafilesystem ../lua-cjson ../lpeg-1.1.0
+  ls -d ../BearSSL ../ed25519 ../vaporUI ../luafilesystem ../lua-cjson ../lpeg-1.1.0
 
   step "build vlr.exe" make TARGET=win32 CC=gcc
   [ "$FAILS" = 0 ] || { echo "ABORT: the build failed (see above); the tests would run an old vlr.exe"; return 1; }

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 A C compiler, make, git, curl, tar. `sh tools/fetch-deps.sh` clones the third-party sources the default module set needs
-(lfs, lpeg, cjson, vaporUI, Monocypher, BearSSL) next to the repository, at the commits CI uses (vaporUI tracks its latest on purpose).
+(lfs, lpeg, cjson, vaporUI, ed25519 (vendors Monocypher), BearSSL) next to the repository, at the commits CI uses (vaporUI tracks its latest on purpose).
 Lua 5.4.8 itself is in `third_party/lua`, with the small patches in `patches/`.
 
 ## Targets

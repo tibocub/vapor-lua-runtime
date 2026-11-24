@@ -12,7 +12,7 @@ As of 2026-11-24, version 0.2.0 plus unreleased work. This page says what is act
 | Networking: TCP/UDP, streams, name lookup without blocking | Linux, wine, real Windows, NuttX simulator with host networking |
 | TLS (BearSSL), chain and host name always verified; `std.http` client; `std.httpd` server | local openssl server tests; manual checks against public hosts; Windows trust store plus built-in root list |
 | LuaSocket compatibility (`socket`, `ltn12`, `mime`, `socket.url`, `socket.http`) | tests, and unmodified pure-Lua rocks run through vpm |
-| `vapor.sign` (ed25519) | used by vpm to verify the signed index |
+| `ed25519` (rock, formerly `vapor.sign`) | used by vpm to verify the signed index |
 | C rocks: `.so` loading (posix), compile into the binary, 5.1 C API shim | exercised against hundreds of real rocks through vpm (see the vpm status page) |
 | WebAssembly build, playground, wterm page | Node suite in CI; headless Firefox; typing into wterm by hand not done |
 | NuttX simulator, RP2040 | built and run in the vaporOS repository; vlr replaced vlua there |
