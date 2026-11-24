@@ -1,4 +1,4 @@
--- socket.http: LuaSocket's HTTP/1.1 client API over socket.tcp (http:// only, like the original; use std.http for https).
+-- socket.http: LuaSocket's HTTP/1.1 client API over socket.tcp (https goes through ssl.https).
 -- request(url [, body]) -> body, code, headers, status      request{url=, method=, headers=, source=, sink=, step=, redirect=, create=, user=, password=, ...} -> 1, code, headers, status
 -- Shortcuts: no proxy, no keep-alive (Connection: close), the step argument is accepted and ignored.
 local socket = require("socket")
@@ -65,8 +65,11 @@ local function readbody(c, headers, method, code, sink)
 end
 
 local function trequest(req, redirects)
-  local u = url.parse(req.url, {host = "", port = M.PORT, path = "/", scheme = "http"})
-  if u.scheme ~= "http" then return nil, "unsupported scheme '" .. tostring(u.scheme) .. "'" end
+  local scheme = url.parse(req.url).scheme or "http"
+  local default = scheme == "https" and 443 or M.PORT
+  local u = url.parse(req.url, {host = "", port = default, path = "/", scheme = "http"})
+  -- https only through a `create` that returns a TLS socket (ssl.https), as in LuaSec
+  if u.scheme ~= "http" and not (u.scheme == "https" and req.create) then return nil, "unsupported scheme '" .. tostring(u.scheme) .. "'" end
   if u.host == "" then return nil, "invalid host '" .. tostring(u.host) .. "'" end
   local method = (req.method or "GET"):upper()
   local sink = req.sink or ltn12.sink.null()
@@ -74,7 +77,7 @@ local function trequest(req, redirects)
   c:settimeout(req.timeout or M.TIMEOUT)
   local ok, err = c:connect(req.host or u.host, tonumber(req.port or u.port))
   if not ok then c:close(); return nil, err end
-  local headers = {host = u.host .. (tonumber(u.port) ~= 80 and (":" .. u.port) or ""), ["user-agent"] = M.USERAGENT, connection = "close"}
+  local headers = {host = u.host .. (tonumber(u.port) ~= default and (":" .. u.port) or ""), ["user-agent"] = M.USERAGENT, connection = "close"}
   local user, pass = req.user or u.user, req.password or u.password
   if user then
     local a, rest = mime.b64(user .. ":" .. (pass or ""))

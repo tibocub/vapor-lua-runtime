@@ -25,4 +25,16 @@ assert(not s3 and err3 and err3:find("trusted", 1, true), tostring(err3))
 -- 4. nothing listens: a plain connection error, not a hang
 local s4, err4 = tls.connect("localhost", 1, {ca = slurp("good.crt"), timeout = 2})
 assert(not s4 and err4)
+-- 5. the LuaSec API: ssl.wrap + ssl.https on top of it
+local https = require("ssl.https")
+local body, code = https.request{url = "https://localhost:" .. good .. "/", cafile = dir .. "/good.crt", sink = require("ltn12").sink.table({})}
+assert(body == 1 and code == 200, tostring(body) .. " " .. tostring(code))
+local text, code2 = https.request{url = "https://localhost:" .. good .. "/", cafile = dir .. "/good.crt"}
+local t = {}
+local r, c3 = https.request{url = "https://localhost:" .. good .. "/", cafile = dir .. "/good.crt", sink = require("ltn12").sink.table(t)}
+assert(r == 1 and c3 == 200 and #table.concat(t) > 100, "body through the sink")
+local bad, berr = https.request{url = "https://localhost:" .. other .. "/", cafile = dir .. "/other.crt", sink = require("ltn12").sink.table({})}
+assert(not bad and berr and berr:find("host name", 1, true), tostring(berr))
+local bad2, berr2 = https.request{url = "https://localhost:" .. good .. "/", cafile = dir .. "/other.crt", sink = require("ltn12").sink.table({})}
+assert(not bad2 and berr2 and berr2:find("trusted", 1, true), tostring(berr2))
 print("ok")
