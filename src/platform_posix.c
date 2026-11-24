@@ -87,54 +87,6 @@ int vlr_fs_stat(const char *path, vlr_stat *st)
     return 0;
 }
 
-#ifndef VLR_POSIX_NO_WAIT
-#include <sys/ioctl.h>
-#include <termios.h>
-
-static struct termios g_saved;
-static int g_raw;
-
-int vlr_console_read(char *buf, int n)
-{
-    ssize_t r = read(0, buf, (size_t)n);
-
-    if (r < 0) return errno == EAGAIN || errno == EINTR ? 0 : -1;
-    return r == 0 ? -1 : (int)r;
-}
-
-int vlr_console_raw(int enable)
-{
-    struct termios t;
-
-    if (enable && !g_raw) {
-        if (tcgetattr(0, &g_saved) != 0) return -1;
-        t = g_saved;
-        t.c_lflag &= ~(tcflag_t)(ICANON | ECHO | ISIG | IEXTEN); /* ISIG off: Ctrl-C is a key event, apps decide */
-        t.c_iflag &= ~(tcflag_t)(IXON | ICRNL | INLCR);
-        t.c_cc[VMIN] = 1;
-        t.c_cc[VTIME] = 0;
-        if (tcsetattr(0, TCSANOW, &t) != 0) return -1;
-        g_raw = 1;
-    } else if (!enable && g_raw) {
-        tcsetattr(0, TCSANOW, &g_saved);
-        g_raw = 0;
-    }
-    return 0;
-}
-
-int vlr_console_size(int *cols, int *rows)
-{
-    struct winsize w;
-
-    if (ioctl(1, TIOCGWINSZ, &w) != 0 || w.ws_col == 0) return -1;
-    *cols = w.ws_col;
-    *rows = w.ws_row;
-    return 0;
-}
-#else
-int vlr_console_raw(int enable) { (void)enable; return 0; }
-#endif
-
 int vlr_system_roots(char **pem, size_t *len) { (void)pem; (void)len; return -1; }
 
 int vlr_random(void *buf, int n)
@@ -146,8 +98,6 @@ int vlr_random(void *buf, int n)
     return ok ? 0 : -1;
 }
 
-int vlr_console_native(void) { return 0; }
-int vlr_console_record(vlr_record *r) { (void)r; return 0; }
 
 #ifdef VLR_POSIX_NO_WAIT
 int vlr_exec(const char *cmd) /* wasm: no processes */

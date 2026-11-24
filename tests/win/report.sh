@@ -39,7 +39,6 @@ main() {
   [ -f vlr.exe ] || { echo "ABORT: no vlr.exe, the build failed (see above)"; return 1; }
   echo "vlr.exe: $(./vlr.exe tests/identity.lua && echo identity ok)"
   step "suite (tests/run.sh)" env VLR=./vlr.exe sh tests/run.sh
-  step "ConPTY console suite" env VLR=./vlr.exe sh tests/win32/run.sh
   # sockets and TLS against the real internet (needs a connection; a failure here is a network or certificate-store finding, not a build failure)
   step "https through the Windows certificate store" ./vlr.exe -e 'local h = require("std.http"); local r, e = h.get("https://example.com/", {timeout = 20}); print(r and r.status or ("FAIL " .. tostring(e))); local b, e2 = h.get("https://expired.badssl.com/", {timeout = 20}); print(b and "FAIL expired accepted" or ("refused: " .. tostring(e2)))'
   echo; echo "SUMMARY: $FAILS failing step(s). Lines starting with FAIL above say which checks."

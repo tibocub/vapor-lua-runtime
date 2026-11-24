@@ -37,31 +37,6 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
     return count;
 }
 
-/* the page owns the console: its size is Module.vlrCols/vlrRows (set by web/vlr-glue.js, default 80x24) */
-EM_JS(int, js_cols, (void), { return Module.vlrCols || 80; });
-EM_JS(int, js_rows, (void), { return Module.vlrRows || 24; });
-
-/* terminal mode (web/term.js): console bytes are the page's input queue, Module.vlrIn, decoded by vtinput like on a tty */
-EM_JS(int, js_console_read, (char *buf, int n), {
-  const q = Module.vlrIn;
-  if (!q) return 0;
-  const k = Math.min(n, q.length);
-  for (let i = 0; i < k; i++) HEAPU8[buf + i] = q.shift();
-  return k;
-});
-
-int vlr_console_read(char *buf, int n)
-{
-    return js_console_read(buf, n);
-}
-
-int vlr_console_size(int *cols, int *rows)
-{
-    *cols = js_cols();
-    *rows = js_rows();
-    return 0;
-}
-
 static lua_State *g_L;
 
 static void tick(void *unused)

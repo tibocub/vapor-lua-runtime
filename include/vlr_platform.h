@@ -77,32 +77,6 @@ int vlr_net_resolve_result(int h, char *addr, int addrlen);
 int vlr_net_close(int h);
 const char *vlr_net_error_text(void);
 
-/*
- * Console (terminal) access for input events. Non-blocking: vlr_console_read returns the bytes available now
- * (0 if none, -1 at end of input); wait for readiness with vlr_wait on handle 0 first. vlr_console_raw switches the
- * console between line mode (0) and raw, unechoed input (1; the previous mode is restored by raw(0)). Backends without
- * a terminal (wasm) have no console bytes: the page pushes events directly. vlr_console_size gives columns and rows.
- */
-int vlr_console_read(char *buf, int n);
-int vlr_console_raw(int enable); /* 0 restore, 1 raw, 2 raw + mouse clicks/drag, 3 raw + motion too (Windows turns quick-edit off for mouse; elsewhere 2 and 3 are 1) */
-int vlr_console_size(int *cols, int *rows);
-
-/*
- * Native key and mouse records, for consoles that report them instead of escape bytes (Windows). vlr_console_native() is 1 while
- * the console is raw and delivers records: then use vlr_console_record (non-blocking, wait with vlr_wait on handle 0 first) and
- * not vlr_console_read. Fields are the plain numbers of a Windows KEY_EVENT / MOUSE_EVENT record (see vaporUI src/winkeys.h);
- * the platform has already paired UTF-16 surrogates and made mouse cells relative to the visible window.
- * Returns 1 and fills *r, or 0 when no record is queued. Other targets: native is 0 and no records exist.
- */
-typedef struct {
-    int kind; /* 1 key press, 2 mouse */
-    unsigned vk, scan, uc, unshifted, ctrl; /* key: virtual key, scan code, character (0 none), character without modifiers, control state */
-    unsigned buttons, prev_buttons, flags, x, y; /* mouse */
-    int level; /* mouse reporting asked for: 0 off, 1 clicks and drag, 2 also motion */
-} vlr_record;
-int vlr_console_native(void);
-int vlr_console_record(vlr_record *r);
-
 /* the system's trusted root certificates as PEM text in a malloc'd buffer (Windows certificate store); -1 where there is none (the TLS layer then reads the usual bundle files) */
 int vlr_system_roots(char **pem, size_t *len);
 

@@ -8,7 +8,6 @@ if [ -z "$VLR" ]; then
 fi
 fail=0
 for t in tests/*.lua; do
-  [ "$t" = tests/keys.lua ] && continue # interactive diagnostic (waits for q), run by hand: docs/tty-test.md
   opt=
   head -n1 "$t" | grep -q '^--! dialect 5.4' && opt=--dialect=5.4
   for mode in "" --step; do
@@ -20,12 +19,6 @@ done
 if [ "$VLR" = ./vlr ]; then
   out=$(./vlr tools/rock2conf.lua tests/rock/toy-1.rockspec tests/rock 2>&1)
   if [ "$out" = "$(cat tests/rock/expected.conf)" ]; then echo "ok   rock2conf"; else echo "FAIL rock2conf: $out"; fail=1; fi
-fi
-
-# the real terminal path through a pty (posix hosts only)
-if [ "$VLR" = ./vlr ] && command -v python3 >/dev/null 2>&1; then
-  python3 -I tests/pty/run.py || fail=1
-  python3 -I tests/pty/snake.py || fail=1
 fi
 
 # os.exit closes the state (finalizers run) and keeps the status

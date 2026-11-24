@@ -52,7 +52,6 @@ int64_t vlr_now_ms(void)
     return (int64_t)(c.QuadPart * 1000 / f.QuadPart);
 }
 
-static int g_native;
 
 /* is console input / stdin readable right now? */
 static int stdin_ready(void)
@@ -66,7 +65,6 @@ static int stdin_ready(void)
         INPUT_RECORD r;
 
         while (PeekConsoleInputW(h, &r, 1, &avail) && avail) {
-            if (g_native && (r.EventType == MOUSE_EVENT || (r.EventType == KEY_EVENT && r.Event.KeyEvent.bKeyDown))) return 1; /* records are read natively */
             if (r.EventType == KEY_EVENT && r.Event.KeyEvent.bKeyDown) {
                 WORD vk = r.Event.KeyEvent.wVirtualKeyCode;
 
@@ -159,13 +157,6 @@ int vlr_fs_mkdir(const char *path)
     return 0;
 }
 
-static DWORD g_inmode, g_outmode;
-static int g_raw;
-
-static int g_level;
-static unsigned g_prev_buttons;
-static WCHAR g_high;
-
 #include <bcrypt.h>
 #include <wincrypt.h>
 
@@ -199,124 +190,6 @@ int vlr_system_roots(char **pem, size_t *len)
     return n > 0 ? 0 : -1;
 }
 int vlr_random(void *buf, int n) { return BCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)n, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0 ? 0 : -1; }
-
-int vlr_console_native(void) { return g_native; }
-
-/* enable: 0 restore, 1 raw, 2 raw + mouse (clicks, drag), 3 raw + motion. The console reports native key and mouse records (no VT input):
-   the character, virtual key, scan code and modifier state of every press, so Ctrl/Alt/Shift combinations are exact (vaporUI src/winkeys.c
-   turns them into events). Mouse needs ENABLE_MOUSE_INPUT and quick-edit OFF: with quick-edit (the console default, kept unless
-   ENABLE_EXTENDED_FLAGS is given without it) clicks and drags select text and never reach the program. ENABLE_PROCESSED_INPUT is off, so Ctrl-C is a key. */
-int vlr_console_raw(int enable)
-{
-    HANDLE in = GetStdHandle(STD_INPUT_HANDLE), out = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    if (enable) {
-        DWORD mode = ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT;
-
-        if (!g_raw) {
-            if (!GetConsoleMode(in, &g_inmode)) return -1;
-            GetConsoleMode(out, &g_outmode);
-            SetConsoleMode(out, g_outmode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-            SetConsoleCP(CP_UTF8);
-            SetConsoleOutputCP(CP_UTF8);
-            g_raw = 1;
-            g_native = 1;
-            g_prev_buttons = 0;
-            g_high = 0;
-        }
-        g_level = enable >= 3 ? 2 : enable == 2 ? 1 : 0;
-        if (g_level) mode |= ENABLE_MOUSE_INPUT; else mode |= ENABLE_QUICK_EDIT_MODE; /* selecting text stays possible unless the mouse is wanted */
-        SetConsoleMode(in, mode);
-    } else if (g_raw) {
-        SetConsoleMode(in, g_inmode);
-        SetConsoleMode(out, g_outmode);
-        g_raw = 0;
-        g_native = 0;
-    }
-    return 0;
-}
-
-/* the key typing only itself on the foreground window's layout: ToUnicodeEx with an empty key state and the "do not touch the keyboard
-   state" flag (a dead key stays pending). 0 for none or a dead key */
-static unsigned unshifted_char(unsigned vk, unsigned scan)
-{
-    BYTE keys[256] = {0};
-    WCHAR buf[4];
-    DWORD thread = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
-    int n = ToUnicodeEx(vk, scan, keys, buf, 4, 0x4, GetKeyboardLayout(thread));
-
-    return n == 1 ? buf[0] : 0;
-}
-
-int vlr_console_record(vlr_record *r)
-{
-    HANDLE in = GetStdHandle(STD_INPUT_HANDLE), out = GetStdHandle(STD_OUTPUT_HANDLE);
-    INPUT_RECORD rec;
-    DWORD n;
-
-    while (g_native && PeekConsoleInputW(in, &rec, 1, &n) && n) {
-        ReadConsoleInputW(in, &rec, 1, &n);
-        memset(r, 0, sizeof *r);
-        if (rec.EventType == KEY_EVENT && rec.Event.KeyEvent.bKeyDown) {
-            const KEY_EVENT_RECORD *k = &rec.Event.KeyEvent;
-            unsigned uc = k->uChar.UnicodeChar;
-
-            if (uc >= 0xD800 && uc < 0xDC00) { g_high = (WCHAR)uc; continue; } /* half a surrogate pair: wait for the other */
-            if (uc >= 0xDC00 && uc < 0xE000) uc = g_high ? 0x10000 + (((unsigned)g_high - 0xD800) << 10) + (uc - 0xDC00) : 0;
-            g_high = 0;
-            r->kind = 1;
-            r->vk = k->wVirtualKeyCode;
-            r->scan = k->wVirtualScanCode;
-            r->uc = uc;
-            r->unshifted = unshifted_char(r->vk, r->scan);
-            r->ctrl = k->dwControlKeyState;
-            return 1;
-        }
-        if (rec.EventType == MOUSE_EVENT) {
-            const MOUSE_EVENT_RECORD *m = &rec.Event.MouseEvent;
-            CONSOLE_SCREEN_BUFFER_INFO info;
-            int x, y;
-
-            if (!GetConsoleScreenBufferInfo(out, &info)) continue;
-            x = m->dwMousePosition.X - info.srWindow.Left; /* positions are in the screen buffer; the app draws in the visible window */
-            y = m->dwMousePosition.Y - info.srWindow.Top;
-            r->prev_buttons = g_prev_buttons;
-            g_prev_buttons = m->dwButtonState & 7u;
-            if (x < 0 || y < 0) continue;
-            r->kind = 2;
-            r->buttons = m->dwButtonState;
-            r->flags = m->dwEventFlags;
-            r->x = (unsigned)x;
-            r->y = (unsigned)y;
-            r->ctrl = m->dwControlKeyState;
-            r->level = g_level;
-            return 1;
-        }
-        /* key release, focus, menu, buffer size: nothing for the app (resize is polled) */
-    }
-    return 0;
-}
-
-int vlr_console_read(char *buf, int n)
-{
-    HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD got = 0;
-
-    if (g_native) return 0; /* records, not bytes: vlr_console_record */
-    if (!stdin_ready()) return 0;
-    if (!ReadFile(in, buf, (DWORD)n, &got, NULL)) return -1;
-    return got == 0 ? -1 : (int)got;
-}
-
-int vlr_console_size(int *cols, int *rows)
-{
-    CONSOLE_SCREEN_BUFFER_INFO i;
-
-    if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &i)) return -1;
-    *cols = i.srWindow.Right - i.srWindow.Left + 1;
-    *rows = i.srWindow.Bottom - i.srWindow.Top + 1;
-    return 0;
-}
 
 int vlr_exec(const char *cmd)
 {
