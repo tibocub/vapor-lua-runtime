@@ -72,6 +72,7 @@ Experimental. Functions: `require("vapor.manifest").load(dir)`, `.check(m, dir)`
 | `vapor.tls` | experimental | `tls.connect(host, port, opts)`, `tls.wrap(sock, host, opts)`; chain and host name always verified; roots from files, the Windows store, built-in list |
 | `std.http` | experimental | `http.get/post/request`; redirects, chunked, streaming `sink`, https |
 | `socket`, `std.socket` | experimental | LuaSocket-compatible subset so luasocket-based rocks run unmodified |
+| `ssl`, `ssl.https` | experimental | LuaSec client API: `ssl.wrap(sock, params)`, `:sni(host)`, `:dohandshake()`, `https.request`. Always verifies chain and host name (see the header of `lua/ssl.lua` for the differences) |
 | `ed25519` | experimental | `ed25519.verify(signature, message, public_key)` (the `ed25519` rock, Monocypher). `vapor.sign` is a deprecated alias |
 | `vapor.close_fd(handle)` | experimental | wake tasks waiting on a handle about to be closed (`nil, "closed"`) |
 
