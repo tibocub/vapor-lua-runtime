@@ -1,5 +1,6 @@
 -- Lua 5.1 compatibility on the 5.4 engine (loaded by default, skipped with --dialect=5.4).
 -- Number printing (5.0 -> "5") is done in C (patches/lua-dotzero.patch).
+local upvaluejoin = debug.upvaluejoin -- the public name is removed at the end of this file
 unpack = table.unpack
 function loadstring(s, name) return load(s, name) end
 function table.getn(t) return #t end
@@ -51,7 +52,7 @@ end
 function setfenv(f, t)
   local fn = resolve(f)
   local i = fn and envindex(fn)
-  if i then debug.upvaluejoin(fn, i, function() return t end, 1) end
+  if i then upvaluejoin(fn, i, function() return t end, 1) end
   return fn
 end
 
@@ -86,3 +87,18 @@ function module(name, ...)
   setfenv(2, mod)
   for _, f in ipairs({...}) do f(mod) end
 end
+
+-- what a stock 5.1 reports and has (LUA_COMPAT included): code that tests _VERSION or feature-detects must take its 5.1 path
+_VERSION = "Lua 5.1"
+math.atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
+package.loaders = package.searchers
+debug.getfenv, debug.setfenv = function(f) return getfenv(f) end, function(f, t) return setfenv(f, t) end
+-- the 5.2+ names that 5.1 and LuaJIT lack are removed, so `if utf8 then` / `if math.type then` choose the 5.1 branch
+-- (kept: table.unpack, which 5.2-compat LuaJIT builds have too, and package.searchers, which require itself reads)
+utf8, warn, rawlen = nil, nil, nil
+string.pack, string.unpack, string.packsize = nil, nil, nil
+table.move, table.pack = nil, nil
+math.type, math.tointeger, math.ult, math.maxinteger, math.mininteger = nil, nil, nil, nil, nil
+coroutine.close, coroutine.isyieldable = nil, nil
+debug.upvalueid, debug.upvaluejoin, debug.getuservalue, debug.setuservalue, debug.setcstacklimit = nil, nil, nil, nil, nil
+

@@ -122,41 +122,6 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
     }
 }
 
-static int towide(const char *u8, wchar_t *w, int cap)
-{
-    return MultiByteToWideChar(CP_UTF8, 0, u8, -1, w, cap) > 0;
-}
-
-int vlr_fs_list(const char *path, int (*cb)(void *, const char *), void *ud)
-{
-    wchar_t pat[MAX_PATH + 4];
-    char name[MAX_PATH * 3];
-    WIN32_FIND_DATAW fd;
-    HANDLE h;
-    size_t len;
-
-    if (!towide(path, pat, MAX_PATH)) { seterr(); return -1; }
-    len = wcslen(pat);
-    wcscpy(pat + len, (len && (pat[len - 1] == L'/' || pat[len - 1] == L'\\')) ? L"*" : L"\\*");
-    h = FindFirstFileW(pat, &fd);
-    if (h == INVALID_HANDLE_VALUE) { seterr(); return -1; }
-    do {
-        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
-        if (!WideCharToMultiByte(CP_UTF8, 0, fd.cFileName, -1, name, sizeof name, NULL, NULL)) continue;
-        if (cb(ud, name)) break;
-    } while (FindNextFileW(h, &fd));
-    FindClose(h);
-    return 0;
-}
-
-int vlr_fs_mkdir(const char *path)
-{
-    wchar_t w[MAX_PATH];
-
-    if (!towide(path, w, MAX_PATH) || !CreateDirectoryW(w, NULL)) { seterr(); return -1; }
-    return 0;
-}
-
 #include <bcrypt.h>
 #include <wincrypt.h>
 
@@ -200,25 +165,4 @@ int vlr_exec(const char *cmd)
     return r == -1 ? (seterr(), -1) : r;
 }
 
-int vlr_fs_rmdir(const char *path)
-{
-    wchar_t w[MAX_PATH];
 
-    if (!towide(path, w, MAX_PATH) || !RemoveDirectoryW(w)) { seterr(); return -1; }
-    return 0;
-}
-
-int vlr_fs_stat(const char *path, vlr_stat *st)
-{
-    wchar_t w[MAX_PATH];
-    WIN32_FILE_ATTRIBUTE_DATA d;
-    ULARGE_INTEGER t;
-
-    if (!towide(path, w, MAX_PATH) || !GetFileAttributesExW(w, GetFileExInfoStandard, &d)) { seterr(); return -1; }
-    st->is_dir = (d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    st->size = ((int64_t)d.nFileSizeHigh << 32) | d.nFileSizeLow;
-    t.LowPart = d.ftLastWriteTime.dwLowDateTime;
-    t.HighPart = d.ftLastWriteTime.dwHighDateTime;
-    st->mtime = (int64_t)(t.QuadPart / 10000000ULL) - 11644473600LL; /* 1601 -> 1970 */
-    return 0;
-}

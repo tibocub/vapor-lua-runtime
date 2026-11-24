@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* capability bits reported to Lua as vapor.caps (a backend ORs what it really supports) */
+/* capability bits reported to Lua as vlr.caps (a backend ORs what it really supports) */
 #define VLR_CAP_FS   0x01
 #define VLR_CAP_NET  0x02
 #define VLR_CAP_GFX  0x04
@@ -17,12 +17,6 @@
 #define VLR_CAP_EXEC 0x20
 
 #define VLR_MAX_FDS 64
-
-typedef struct {
-    int is_dir;
-    int64_t size;
-    int64_t mtime; /* seconds since the epoch, 0 if the filesystem has none */
-} vlr_stat;
 
 uint32_t vlr_caps(void);
 
@@ -43,14 +37,8 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms);
    The handle is reported ready with the flag still set. */
 #define VLR_WRITABLE 0x40000000
 
-/* calls cb for every entry except . and ..; a non-zero return from cb stops the listing */
-int vlr_fs_list(const char *path, int (*cb)(void *ud, const char *name), void *ud);
-int vlr_fs_mkdir(const char *path);
-int vlr_fs_rmdir(const char *path); /* empty directories only; os.remove cannot do this on Windows */
-int vlr_fs_stat(const char *path, vlr_stat *st);
-
 /*
- * Networking (optional module "vapor.netraw", capability VLR_CAP_NET). Handles are sockets mapped to ints, waitable
+ * Networking (optional module "vlr.netraw", capability VLR_CAP_NET). Handles are sockets mapped to ints, waitable
  * with vlr_wait (VLR_WRITABLE for connect completion and send). Everything is non-blocking except name resolution,
  * which blocks the whole process while it runs (shortcut: a resolver handle would be exact).
  * Return codes of the data calls: >0 or 0 = ok (bytes), VLR_NET_AGAIN = try again after vlr_wait, VLR_NET_EOF = peer closed

@@ -1,7 +1,7 @@
 -- "bit32": the Lua 5.2 library on integers (results are unsigned 32-bit), for 5.1/5.2-era code that does `require("bit32")`.
 local M = {}
 local function u(x)
-  if math.type(x) == "float" then x = math.floor(x) end
+  x = math.floor(x)
   return x & 0xFFFFFFFF
 end
 M.bnot = function(x) return ~u(x) & 0xFFFFFFFF end

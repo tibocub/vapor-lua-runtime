@@ -1,7 +1,7 @@
 -- "bit": the LuaJIT/BitOp API on integers (results are signed 32-bit, like BitOp), for 5.1-era code that does `require("bit")`.
 local M = {}
 local function n(x)
-  if math.type(x) == "float" then x = math.floor(x + 0.5) end
+  if x ~= math.floor(x) then x = math.floor(x + 0.5) end
   return x
 end
 local function s32(x) x = x & 0xFFFFFFFF; if x >= 0x80000000 then x = x - 0x100000000 end; return x end

@@ -1,11 +1,9 @@
 /* vlr backend for POSIX hosts (Linux, macOS, BSD) */
 #define _POSIX_C_SOURCE 200809L
-#include <dirent.h>
 #include <errno.h>
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -51,41 +49,6 @@ int vlr_wait(const int *fds, int n, int *ready, int timeout_ms)
 }
 
 #endif
-
-int vlr_fs_list(const char *path, int (*cb)(void *, const char *), void *ud)
-{
-    DIR *d = opendir(path);
-    struct dirent *e;
-
-    if (d == NULL) return -1;
-    while ((e = readdir(d)) != NULL) {
-        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
-        if (cb(ud, e->d_name)) break;
-    }
-    closedir(d);
-    return 0;
-}
-
-int vlr_fs_mkdir(const char *path)
-{
-    return mkdir(path, 0777);
-}
-
-int vlr_fs_rmdir(const char *path)
-{
-    return rmdir(path);
-}
-
-int vlr_fs_stat(const char *path, vlr_stat *st)
-{
-    struct stat s;
-
-    if (stat(path, &s) != 0) return -1;
-    st->is_dir = S_ISDIR(s.st_mode);
-    st->size = s.st_size;
-    st->mtime = s.st_mtime;
-    return 0;
-}
 
 int vlr_system_roots(char **pem, size_t *len) { (void)pem; (void)len; return -1; }
 
